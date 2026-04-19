@@ -1476,21 +1476,26 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <input class="settings-input" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec" oninput="openSheet_onUrlChange()">
     <div style="margin-top:10px;"><div class="field-label" style="margin-bottom:5px;">📋 Code: <span style="font-size:10px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 7px;margin-left:6px;font-family:var(--font-mono);font-weight:700;">v5.1</span></div>
     <div class="code-block">/* =========================================
-   TradeLog Pro+ — Google Apps Script v5.1
+/* =========================================
+   TradeLog Pro+ — Google Apps Script v5.2
    Changelog:
+     v5.2 - FiboLevel: เพิ่ม column ใน Trades + DataTrades
+          - DataTrades HDR: ใช้ header เดียวกับ Trades (unified schema)
+          - Compound key dedup: ID+EntryDateTime+Entry+Side (ป้องกัน float precision)
+          - deduplicateDataTrades: action ใหม่สำหรับล้าง duplicate จาก client
+          - Close/Fees/Commission: เพิ่มใน DataTrades
+          - timeInPos: เพิ่มใน DataTrades save/batch
      v5.1 - Fix duplicate trades: sync lock, Sheet=source of truth, fingerprint dedup
-          - Fix cleanDuplicates: remove getUi().alert, add fingerprint for Trades
-          - Fix saveTrade: fingerprint upsert before appendRow
      v5.0 - Initial release
-   รองรับ: Portfolio | Data Mode Trades
-           Candle | Mode | TF | Trend
-           Zone | Confirm | Sessions
-           Emotion | Discipline | MaxRR | SetupClass
-           Custom Assets (saveAssets/loadAssets)
-           Fees + Commission แยกกัน
+   รองรับ: Portfolio | Data Mode Trades | FiboLevel
+           Candle | Mode | TF | Trend | Zone | Confirm
+           Sessions | Emotion | Discipline | MaxRR | SetupClass
+           Custom Assets | Fees + Commission + Close
    Log: ครบทุก action
-   Sheet: Trades | DataTrades | Sessions | Summary | Assets | Log
+   Sheet: Trades | DataTrades | Sessions | Summary | Assets | Log | Journal | DeletedPorts
    ========================================= */
+
+
 
 var SHEET={TRADES:'Trades',DATA_TRADES:'DataTrades',SESSIONS:'Sessions',SUMMARY:'Summary',ASSETS:'Assets',LOG:'Log',JOURNAL:'Journal',DELETED_PORTS:'DeletedPorts'};
 // ── UNIFIED TRADE SCHEMA — single source of truth for all field names ──
@@ -1535,12 +1540,13 @@ var HDR={
 };
 
 function doGet(e){
-  var p=e&amp;&amp;e.parameter;
-  if(p&amp;&amp;p.action==='loadAssets')     return _json(loadAssets());
-  if(p&amp;&amp;p.action==='loadPortfolios') return _json(loadPortfolios());
-  if(p&amp;&amp;p.action==='loadAll')           return _json(loadAll());
-  if(p&amp;&amp;p.action==='cleanDuplicates')   return _json(cleanDuplicates());
-  if(p&amp;&amp;p.action==='clearAllDataTrades')  return _json(clearAllDataTrades(p));
+  var p=e&&e.parameter;
+  if(p&&p.action==='loadAssets')     return _json(loadAssets());
+  if(p&&p.action==='loadPortfolios') return _json(loadPortfolios());
+  if(p&&p.action==='loadAll')           return _json(loadAll());
+  if(p&&p.action==='cleanDuplicates')   return _json(cleanDuplicates());
+  if(p&&p.action==='clearAllDataTrades')  return _json(clearAllDataTrades(p));
+  if(p&&p.action==='deduplicateDataTrades') return _json(deduplicateDataTrades(p));
   return _json({status:'ready',version:'5.1',time:new Date().toISOString()});
 }
 function loadAll(){
@@ -1552,7 +1558,7 @@ function loadAll(){
     var _permanentDeleted={};
     try{
       var dpSh=ss.getSheetByName(SHEET.DELETED_PORTS);
-      if(dpSh&amp;&amp;dpSh.getLastRow()&gt;1){
+      if(dpSh&&dpSh.getLastRow()>1){
         dpSh.getRange(2,1,dpSh.getLastRow()-1,1).getValues().forEach(function(r){
           var pid=String(r[0]||'').trim();
           if(pid) _permanentDeleted[pid]=true;
@@ -1562,7 +1568,7 @@ function loadAll(){
 
     // ── Portfolios from Log ──
     var logSh=ss.getSheetByName(SHEET.LOG);
-    if(logSh&amp;&amp;logSh.getLastRow()&gt;1){
+    if(logSh&&logSh.getLastRow()>1){
       var logRows=logSh.getRange(2,1,logSh.getLastRow()-1,6).getValues();
       var ports={};
       var deletedPorts={}; // tombstone: พอร์ตที่ถูกลบแล้ว (จาก Log)
@@ -1575,7 +1581,7 @@ function loadAll(){
           var addM=detail.match(/^portfolio_add\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+fund=(\S*)/);
           var editM=detail.match(/^portfolio_edit\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+balance=([\d.]+)\s+fund=(\S*)/);
           // ถ้า id อยู่ใน permanent tombstone → ไม่ restore ไม่ว่า Log จะบอกอะไร
-          if(addM){ var id=addM[1]; if(!ports[id]&amp;&amp;!_permanentDeleted[id]) ports[id]={name:addM[2],balance:0,fund:addM[3]==='-'?'':addM[3]}; }
+          if(addM){ var id=addM[1]; if(!ports[id]&&!_permanentDeleted[id]) ports[id]={name:addM[2],balance:0,fund:addM[3]==='-'?'':addM[3]}; }
           if(editM){ var id=editM[1]; if(!_permanentDeleted[id]) ports[id]={name:editM[2],balance:parseFloat(editM[3])||0,fund:editM[4]==='-'?'':editM[4]}; }
         }
         // อ่าน tombstone จาก deletePortfolio ใน Log (เป็น backup ของ permanent sheet)
@@ -1587,7 +1593,7 @@ function loadAll(){
       // ลบพอร์ตที่อยู่ใน permanent tombstone ออกจาก ports ด้วย (กันทุกกรณี)
       Object.keys(_permanentDeleted).forEach(function(pid){ delete ports[pid]; });
       // สร้าง default เฉพาะตอนที่ไม่ได้อยู่ใน tombstone (ป้องกัน default เด้งกลับ)
-      if(!ports['default'] &amp;&amp; !deletedPorts['default']) ports['default']={name:'Default',balance:0,fund:''};
+      if(!ports['default'] && !deletedPorts['default']) ports['default']={name:'Default',balance:0,fund:''};
       result.portfolios=ports;
       result._deletedPorts=deletedPorts; // ส่งกลับไปให้ client ด้วย
     }
@@ -1595,12 +1601,12 @@ function loadAll(){
     // ── fallback: ดึง unique Portfolio IDs จาก Trades sheet ถ้า Log ไม่มี ──
     var _deletedPorts=result._deletedPorts||{};
     var tShFB=ss.getSheetByName(SHEET.TRADES);
-    if(tShFB&amp;&amp;tShFB.getLastRow()&gt;1){
+    if(tShFB&&tShFB.getLastRow()>1){
       var tPortVals=tShFB.getRange(2,3,tShFB.getLastRow()-1,1).getValues();
       tPortVals.forEach(function(r){
         var pid=String(r[0]||'').trim();
         // ข้ามพอร์ตที่ถูกลบ (tombstone) — ป้องกันเด้งกลับมา
-        if(pid&amp;&amp;!result.portfolios[pid]&amp;&amp;!_deletedPorts[pid]){
+        if(pid&&!result.portfolios[pid]&&!_deletedPorts[pid]){
           var shortName=pid.replace(/^port_/,'').substring(0,7);
           result.portfolios[pid]={name:'Port-'+shortName,balance:0,fund:'',_autoName:true};
         }
@@ -1609,12 +1615,12 @@ function loadAll(){
 
     // ── fallback: สร้างพอร์ตจาก Trades sheet ถ้า Log ไม่มีข้อมูล ──
     var tShP=ss.getSheetByName(SHEET.TRADES);
-    if(tShP&amp;&amp;tShP.getLastRow()&gt;1){
+    if(tShP&&tShP.getLastRow()>1){
       var tVals=tShP.getRange(2,3,tShP.getLastRow()-1,1).getValues();
       tVals.forEach(function(r){
         var pid=String(r[0]||'').trim();
         // ข้ามพอร์ตที่ถูกลบ (tombstone) — ป้องกันเด้งกลับมา
-        if(pid&amp;&amp;!result.portfolios[pid]&amp;&amp;!_deletedPorts[pid]){
+        if(pid&&!result.portfolios[pid]&&!_deletedPorts[pid]){
           var shortName=pid.replace(/^port_/,'').substring(0,7);
           result.portfolios[pid]={name:'Port '+shortName,balance:0,fund:'',_autoName:true};
         }
@@ -1653,7 +1659,7 @@ function loadAll(){
 
     // ── Trades (dedup by ID before returning) ──
     var tSh=ss.getSheetByName(SHEET.TRADES);
-    if(tSh&amp;&amp;tSh.getLastRow()&gt;1){
+    if(tSh&&tSh.getLastRow()>1){
       var tHdr=tSh.getRange(1,1,1,tSh.getLastColumn()).getValues()[0];
       var tRows=tSh.getRange(2,1,tSh.getLastRow()-1,tSh.getLastColumn()).getValues();
       var tSeen={};
@@ -1668,7 +1674,7 @@ function loadAll(){
 
     // ── Sessions (dedup by Date+Portfolio) ──
     var sesSh=ss.getSheetByName(SHEET.SESSIONS);
-    if(sesSh&amp;&amp;sesSh.getLastRow()&gt;1){
+    if(sesSh&&sesSh.getLastRow()>1){
       var sHdr=sesSh.getRange(1,1,1,sesSh.getLastColumn()).getValues()[0];
       var sRows=sesSh.getRange(2,1,sesSh.getLastRow()-1,sesSh.getLastColumn()).getValues();
       var sSeen={};
@@ -1684,7 +1690,7 @@ function loadAll(){
 
     // ── DataTrades (dedup by ID) ──
     var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
-    if(dtSh&amp;&amp;dtSh.getLastRow()&gt;1){
+    if(dtSh&&dtSh.getLastRow()>1){
       var dHdr=dtSh.getRange(1,1,1,dtSh.getLastColumn()).getValues()[0];
       var dRows=dtSh.getRange(2,1,dtSh.getLastRow()-1,dtSh.getLastColumn()).getValues();
       var dtSeen={};
@@ -1700,7 +1706,7 @@ function loadAll(){
     // ── Journal (Note of Day) ──
     result.journal=[];
     var jSh=ss.getSheetByName(SHEET.JOURNAL);
-    if(jSh&amp;&amp;jSh.getLastRow()&gt;1){
+    if(jSh&&jSh.getLastRow()>1){
       var jHdr=jSh.getRange(1,1,1,jSh.getLastColumn()).getValues()[0];
       var jRows=jSh.getRange(2,1,jSh.getLastRow()-1,jSh.getLastColumn()).getValues();
       jRows.forEach(function(r){
@@ -1708,7 +1714,7 @@ function loadAll(){
         var date=String(obj['Date']||obj['date']||'').trim().substring(0,10);
         var port=String(obj['Portfolio']||obj['portfolio']||'default').trim();
         var html=String(obj['NoteHTML']||obj['noteHTML']||'').trim();
-        if(date&amp;&amp;html) result.journal.push({date:date,portfolio:port,noteHTML:html});
+        if(date&&html) result.journal.push({date:date,portfolio:port,noteHTML:html});
       });
     }
     return result;
@@ -1721,7 +1727,7 @@ function loadAll(){
 function loadPortfolios(){
   try{
     var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.LOG);
-    if(!sh||sh.getLastRow()&lt;2) return {status:'ok',portfolios:{}};
+    if(!sh||sh.getLastRow()<2) return {status:'ok',portfolios:{}};
     var rows=sh.getRange(2,1,sh.getLastRow()-1,6).getValues();
     var ports={};
     rows.forEach(function(r){
@@ -1765,6 +1771,7 @@ function doPost(e){
     else if(d.action==='deleteDataTrade')    res=deleteDataTrade(d);
     else if(d.action==='batchSaveDataTrades')res=batchSaveDataTrades(d);
     else if(d.action==='clearAllDataTrades')   res=clearAllDataTrades(d);
+    else if(d.action==='deduplicateDataTrades') res=deduplicateDataTrades(d);
     else if(d.action==='saveNoteDay')         res=saveNoteDay(d);
     else res={status:'error',msg:'unknown action: '+d.action};
     return _json(res);
@@ -1777,7 +1784,7 @@ function doPost(e){
 function saveAssets(d){
   var sh=_sheet(SHEET.ASSETS,HDR.ASSETS);
   var assets=d.assets||[];
-  if(sh.getLastRow()&gt;1) sh.deleteRows(2,sh.getLastRow()-1);
+  if(sh.getLastRow()>1) sh.deleteRows(2,sh.getLastRow()-1);
   var now=_now();
   assets.forEach(function(a){sh.appendRow([a,now]);});
   _log('saveAssets','count='+assets.length,d.portfolio||'default','port','ok');
@@ -1792,10 +1799,10 @@ function saveNoteDay(d){
   // strip base64 images from HTML before saving to keep sheet lightweight
   var html=(d.noteHTML||'').replace(/src="data:[^"]{0,20000}"/g,'src="[image]"');
   // plain text fallback (strip tags)
-  var plain=(d.notePlain||html.replace(/&lt;[^&gt;]*&gt;/g,' ').replace(/\s+/g,' ').trim()).substring(0,5000);
+  var plain=(d.notePlain||html.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()).substring(0,5000);
   var row=[date, portfolio, html, plain, _now()];
   var existing=_findRow2(sh,1,date,2,portfolio);
-  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   var bg='#1a1c2e';
   sh.getRange(existing,1,1,row.length).setBackground(bg).setFontColor('#e8eaf0').setFontSize(10);
@@ -1804,7 +1811,7 @@ function saveNoteDay(d){
 }
 function loadAssets(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.ASSETS);
-  if(!sh||sh.getLastRow()&lt;2) return {status:'ok',assets:[]};
+  if(!sh||sh.getLastRow()<2) return {status:'ok',assets:[]};
   var assets=sh.getRange(2,1,sh.getLastRow()-1,1).getValues().map(function(r){return r[0];}).filter(Boolean);
   return {status:'ok',assets:assets};
 }
@@ -1834,7 +1841,7 @@ function saveDataTrade(d){
     d.note||'', d.imgLink||'', _now()
   ];
   var existing=_findRow(sh,1,id);
-  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   var pnl=parseFloat(d.pnl)||0;
   _styleDataRow(sh,existing,d.result,pnl);
@@ -1865,7 +1872,7 @@ function batchSaveDataTrades(d){
       t.note||'', t.imgLink||'', now
     ];
     var existing=_findRow(sh,1,id);
-    if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+    if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
     else{ sh.appendRow(row); existing=sh.getLastRow(); }
     _styleDataRow(sh,existing,t.result,pnl);
   });
@@ -1876,9 +1883,9 @@ function batchSaveDataTrades(d){
 function deleteDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var row=_findRow(sh,1,String(d._id||d.id));
-  if(row&gt;0) sh.deleteRow(row);
-  _log('deleteDataTrade','id='+(d._id||d.id)+' deleted='+(row&gt;0),d.portfolio||'data','data',row&gt;0?'ok':'not_found');
-  return {status:'ok',deleted:row&gt;0};
+  if(row>0) sh.deleteRow(row);
+  _log('deleteDataTrade','id='+(d._id||d.id)+' deleted='+(row>0),d.portfolio||'data','data',row>0?'ok':'not_found');
+  return {status:'ok',deleted:row>0};
 }
 
 function clearAllDataTrades(d){
@@ -1913,12 +1920,12 @@ function saveTrade(d){
     d.note||'', d.imgLink||'', _now()
   ];
   var existing=_findRow(sh,1,id);
-  if(existing&lt;0){
+  if(existing<0){
     var fp=String(d.date||'')+'|'+(d.portfolio||'default')+'|'+String(d.asset||'')+'|'+String(d.side||'')+'|'+String(parseFloat(d.entry)||0)+'|'+String(parseFloat(d.lots)||0);
     existing=_findRowByFingerprint(sh,fp);
-    if(existing&gt;0){ id=String(sh.getRange(existing,1).getValue()||id); row[0]=id; }
+    if(existing>0){ id=String(sh.getRange(existing,1).getValue()||id); row[0]=id; }
   }
-  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   _styleTradeRow(sh,existing,d.result,pnl);
   _recalc(d.date, d.portfolio||'default');
@@ -1949,7 +1956,7 @@ function batchSaveTrades(d){
       t.note||'', t.imgLink||'', now
     ];
     var existing=_findRow(sh,1,id);
-    if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+    if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
     else{ sh.appendRow(row); existing=sh.getLastRow(); }
     _styleTradeRow(sh,existing,t.result,pnl);
     var dk=(t.date||'')+'|'+(t.portfolio||'default');
@@ -1963,9 +1970,9 @@ function batchSaveTrades(d){
 function deleteTrade(d){
   var sh=_sheet(SHEET.TRADES,HDR.TRADES);
   var row=_findRow(sh,1,String(d.id));
-  if(row&gt;0){sh.deleteRow(row); _recalc(d.date, d.portfolio||'default');}
-  _log('deleteTrade','id='+d.id+' date='+d.date+' deleted='+(row&gt;0),d.portfolio||'default','port',row&gt;0?'ok':'not_found');
-  return {status:'ok',deleted:row&gt;0};
+  if(row>0){sh.deleteRow(row); _recalc(d.date, d.portfolio||'default');}
+  _log('deleteTrade','id='+d.id+' date='+d.date+' deleted='+(row>0),d.portfolio||'default','port',row>0?'ok':'not_found');
+  return {status:'ok',deleted:row>0};
 }
 
 function saveSession(d){
@@ -1973,13 +1980,13 @@ function saveSession(d){
   var portfolio=d.portfolio||'default';
   var ts=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.TRADES);
   var pnl=0,wins=0,losses=0,gp=0,gl=0,pnls=[];
-  if(ts&amp;&amp;ts.getLastRow()&gt;1){
+  if(ts&&ts.getLastRow()>1){
     var rows=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===d.date &amp;&amp; (r[2]||'default')===portfolio;
+      return r[1]===d.date && (r[2]||'default')===portfolio;
     });
     rows.forEach(function(r){
       var p=parseFloat(r[10])||0; pnls.push(p); pnl+=p;
-      if(p&gt;0){wins++;gp+=p;} else if(p&lt;0){losses++;gl+=Math.abs(p);}
+      if(p>0){wins++;gp+=p;} else if(p<0){losses++;gl+=Math.abs(p);}
     });
   }
   var total=wins+losses;
@@ -1988,7 +1995,7 @@ function saveSession(d){
   var avgL=losses?+(gl/losses).toFixed(2):0;
   var pf=gl?+(gp/gl).toFixed(2):0;
   var cum=0,peak=0,dd=0;
-  pnls.forEach(function(p){cum+=p;if(cum&gt;peak)peak=cum;if(peak-cum&gt;dd)dd=peak-cum;});
+  pnls.forEach(function(p){cum+=p;if(cum>peak)peak=cum;if(peak-cum>dd)dd=peak-cum;});
   var row=[
     d.date||'', portfolio,
     d.emotion||'', d.trend||'', d.confirm||'',
@@ -2000,9 +2007,9 @@ function saveSession(d){
     _now()
   ];
   var existing=_findRow2(sh,1,d.date,2,portfolio);
-  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
-  _colorRow(sh,existing,pnl&gt;0?'#1a2e22':pnl&lt;0?'#2e1a1f':'#1a1c26');
+  _colorRow(sh,existing,pnl>0?'#1a2e22':pnl<0?'#2e1a1f':'#1a1c26');
   _stylePnlCell(sh,existing,9,pnl);
   _recalc(d.date, portfolio);
   _log('saveSession','date='+d.date+' pnl='+pnl.toFixed(2)+' trades='+total+' wr='+wr+'%',portfolio,'port','ok');
@@ -2013,12 +2020,12 @@ function deleteDay(d){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var portfolio=d.portfolio||'default';
   [SHEET.TRADES,SHEET.SESSIONS,SHEET.SUMMARY].forEach(function(name){
-    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()&lt;2) return;
+    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()<2) return;
     var dateCol=name===SHEET.TRADES?2:1;
     var portCol=name===SHEET.TRADES?3:2;
     var vals=sh.getDataRange().getValues();
-    for(var i=vals.length-1;i&gt;=1;i--){
-      if(vals[i][dateCol-1]===d.date &amp;&amp; (vals[i][portCol-1]||'default')===portfolio)
+    for(var i=vals.length-1;i>=1;i--){
+      if(vals[i][dateCol-1]===d.date && (vals[i][portCol-1]||'default')===portfolio)
         sh.deleteRow(i+1);
     }
   });
@@ -2031,10 +2038,10 @@ function deletePortfolio(d){
   var portfolio=String(d.portfolio||'');
   if(!portfolio) return {status:'error',msg:'no portfolio id'};
   [SHEET.TRADES,SHEET.SESSIONS,SHEET.SUMMARY].forEach(function(name){
-    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()&lt;2) return;
+    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()<2) return;
     var portCol=name===SHEET.TRADES?3:2;
     var vals=sh.getDataRange().getValues();
-    for(var i=vals.length-1;i&gt;=1;i--){
+    for(var i=vals.length-1;i>=1;i--){
       if(String(vals[i][portCol-1])===portfolio) sh.deleteRow(i+1);
     }
   });
@@ -2043,9 +2050,9 @@ function deletePortfolio(d){
     var dpSh=_sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
     // ตรวจว่ามีอยู่แล้วหรือยัง (ป้องกัน duplicate)
     var alreadyDeleted=false;
-    if(dpSh.getLastRow()&gt;1){
+    if(dpSh.getLastRow()>1){
       var existing=dpSh.getRange(2,1,dpSh.getLastRow()-1,1).getValues();
-      for(var i=0;i&lt;existing.length;i++){
+      for(var i=0;i<existing.length;i++){
         if(String(existing[i][0])===portfolio){alreadyDeleted=true;break;}
       }
     }
@@ -2063,17 +2070,17 @@ function _recalc(date,portfolio){
   var ses=ss.getSheetByName(SHEET.SESSIONS);
   var sum=_sheet(SHEET.SUMMARY,HDR.SUMMARY);
   var trades=[];
-  if(ts&amp;&amp;ts.getLastRow()&gt;1){
+  if(ts&&ts.getLastRow()>1){
     trades=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===date &amp;&amp; (r[2]||'default')===portfolio;
+      return r[1]===date && (r[2]||'default')===portfolio;
     });
   }
   var pnls=trades.map(function(r){return parseFloat(r[10])||0;});
   var net=pnls.reduce(function(s,v){return s+v;},0);
-  var gp=pnls.filter(function(v){return v&gt;0;}).reduce(function(s,v){return s+v;},0);
-  var gl=Math.abs(pnls.filter(function(v){return v&lt;0;}).reduce(function(s,v){return s+v;},0));
-  var wins=pnls.filter(function(v){return v&gt;0;}).length;
-  var losses=pnls.filter(function(v){return v&lt;0;}).length;
+  var gp=pnls.filter(function(v){return v>0;}).reduce(function(s,v){return s+v;},0);
+  var gl=Math.abs(pnls.filter(function(v){return v<0;}).reduce(function(s,v){return s+v;},0));
+  var wins=pnls.filter(function(v){return v>0;}).length;
+  var losses=pnls.filter(function(v){return v<0;}).length;
   var total=trades.length;
   var wr=total?Math.round(wins/total*100):0;
   var avgW=wins?+(gp/wins).toFixed(2):0;
@@ -2082,11 +2089,11 @@ function _recalc(date,portfolio){
   var best=pnls.length?Math.max.apply(null,pnls):0;
   var worst=pnls.length?Math.min.apply(null,pnls):0;
   var cum=0,peak=0,dd=0;
-  pnls.forEach(function(p){cum+=p;if(cum&gt;peak)peak=cum;if(peak-cum&gt;dd)dd=peak-cum;});
+  pnls.forEach(function(p){cum+=p;if(cum>peak)peak=cum;if(peak-cum>dd)dd=peak-cum;});
   var emo='',sessStr='';
-  if(ses&amp;&amp;ses.getLastRow()&gt;1){
+  if(ses&&ses.getLastRow()>1){
     var sr=ses.getDataRange().getValues().slice(1).find(function(r){
-      return r[0]===date &amp;&amp; (r[1]||'default')===portfolio;
+      return r[0]===date && (r[1]||'default')===portfolio;
     });
     if(sr){emo=sr[2]||''; sessStr=sr[5]||'';}
   }
@@ -2097,9 +2104,9 @@ function _recalc(date,portfolio){
     emo, sessStr, _now()
   ];
   var ex=_findRow2(sum,1,date,2,portfolio);
-  if(ex&gt;0) sum.getRange(ex,1,1,row.length).setValues([row]);
+  if(ex>0) sum.getRange(ex,1,1,row.length).setValues([row]);
   else{ sum.appendRow(row); ex=sum.getLastRow(); }
-  _colorRow(sum,ex,net&gt;0?'#1a2e22':net&lt;0?'#2e1a1f':'#1a1c26');
+  _colorRow(sum,ex,net>0?'#1a2e22':net<0?'#2e1a1f':'#1a1c26');
   _stylePnlCell(sum,ex,3,net);
 }
 
@@ -2148,15 +2155,15 @@ function _colorRow(sh,row,bg){
 }
 function _stylePnlCell(sh,row,col,pnl){
   var c=sh.getRange(row,col);
-  c.setFontColor(pnl&gt;0?'#2ecc8a':pnl&lt;0?'#ff4d6a':'#8b90a0');
+  c.setFontColor(pnl>0?'#2ecc8a':pnl<0?'#ff4d6a':'#8b90a0');
   c.setFontWeight('bold');
 }
 function _findRow(sh,col,val){
-  if(sh.getLastRow()&lt;2) return -1;
+  if(sh.getLastRow()<2) return -1;
   var data=sh.getDataRange().getValues();
   var sVal=String(val).trim();
   var firstFound=-1;
-  for(var i=1;i&lt;data.length;i++){
+  for(var i=1;i<data.length;i++){
     var cell=String(data[i][col-1]).trim();
     if(cell===sVal){
       if(firstFound===-1){ firstFound=i+1; }
@@ -2166,17 +2173,17 @@ function _findRow(sh,col,val){
   return firstFound;
 }
 function _findRow2(sh,col1,val1,col2,val2){
-  if(sh.getLastRow()&lt;2) return -1;
+  if(sh.getLastRow()<2) return -1;
   var data=sh.getDataRange().getValues();
-  for(var i=1;i&lt;data.length;i++){
-    if(String(data[i][col1-1])===String(val1) &amp;&amp; String(data[i][col2-1])===String(val2)) return i+1;
+  for(var i=1;i<data.length;i++){
+    if(String(data[i][col1-1])===String(val1) && String(data[i][col2-1])===String(val2)) return i+1;
   }
   return -1;
 }
 function _findRowByFingerprint(sh,fp){
-  if(sh.getLastRow()&lt;2) return -1;
+  if(sh.getLastRow()<2) return -1;
   var data=sh.getDataRange().getValues();
-  for(var i=1;i&lt;data.length;i++){
+  for(var i=1;i<data.length;i++){
     var r=data[i];
     var rowFp=String(r[1])+'|'+String(r[2])+'|'+String(r[3])+'|'+String(r[4])+'|'+String(parseFloat(r[6])||0)+'|'+String(parseFloat(r[5])||0);
     if(rowFp===fp) return i+1;
@@ -2187,7 +2194,7 @@ function _log(action,detail,portfolio,source,result){
   try{
     var sh=_sheet(SHEET.LOG,HDR.LOG);
     sh.appendRow([_now(),action,(detail||'').toString().substring(0,300),portfolio||'',source||'',result||'ok']);
-    if(sh.getLastRow()&gt;2001) sh.deleteRow(2);
+    if(sh.getLastRow()>2001) sh.deleteRow(2);
     var row=sh.getLastRow();
     var bg=result==='ok'?'#0d2211':result==='error'||result==='not_found'?'#2e1a1f':'#1a1c26';
     sh.getRange(row,1,1,6).setBackground(bg).setFontColor('#e8eaf0').setFontSize(9);
@@ -2196,6 +2203,30 @@ function _log(action,detail,portfolio,source,result){
 function _now(){return Utilities.formatDate(new Date(),'Asia/Bangkok','yyyy-MM-dd HH:mm:ss');}
 function _json(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);}
 
+
+function deduplicateDataTrades(d){
+  // ลบ duplicate rows ใน DataTrades sheet — compound key (ID+EntryTime+Entry+Side)
+  var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
+  var last=sh.getLastRow();
+  if(last<=2) return {status:'ok',removed:0};
+  var hdr=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  var idCol=0;
+  var timeCol=hdr.indexOf('EntryTime'); if(timeCol<0)timeCol=7;
+  var entryCol=hdr.indexOf('Entry'); if(entryCol<0)entryCol=7;
+  var sideCol=hdr.indexOf('Side'); if(sideCol<0)sideCol=6;
+  var data=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
+  var seenFp={};
+  var rowsToDelete=[];
+  data.forEach(function(row,i){
+    var id=String(row[idCol]||'').trim();
+    if(!id){rowsToDelete.push(i+2);return;}
+    var fp=id+'|'+String(row[timeCol]||'').trim().substring(0,5)+'|'+String(row[entryCol]||'').trim()+'|'+String(row[sideCol]||'').trim();
+    if(seenFp[fp]){rowsToDelete.push(i+2);}else{seenFp[fp]=true;}
+  });
+  rowsToDelete.reverse().forEach(function(r){sh.deleteRow(r);});
+  _log('deduplicateDataTrades','removed='+rowsToDelete.length,d&&d.portfolio?d.portfolio:'data','data','ok');
+  return {status:'ok',removed:rowsToDelete.length};
+}
 function cleanDuplicates(){
   // ลบ duplicate rows ออกจากทุก sheet โดยเก็บแถวล่าสุดของแต่ละ ID
   var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -2223,13 +2254,13 @@ function cleanDuplicates(){
 
   // Clean Sessions (dedup by Date+Portfolio)
   var sesSh=ss.getSheetByName(SHEET.SESSIONS);
-  if(sesSh&amp;&amp;sesSh.getLastRow()&gt;1){
+  if(sesSh&&sesSh.getLastRow()>1){
     var sData=sesSh.getDataRange().getValues();
     var sHdr=sData[0];
     var sDateCol=sHdr.indexOf('Date'); var sPortCol=sHdr.indexOf('Portfolio');
-    if(sDateCol&lt;0) sDateCol=0; if(sPortCol&lt;0) sPortCol=1;
+    if(sDateCol<0) sDateCol=0; if(sPortCol<0) sPortCol=1;
     var sSeen={}; var sDel=[];
-    for(var i=sData.length-1;i&gt;=1;i--){
+    for(var i=sData.length-1;i>=1;i--){
       var sk=String(sData[i][sPortCol]).trim()+'|'+String(sData[i][sDateCol]).trim();
       if(!String(sData[i][sDateCol]).trim()){ sDel.push(i+1); continue; }
       if(sSeen[sk]){ sDel.push(i+1); } else { sSeen[sk]=true; }
@@ -2241,15 +2272,15 @@ function cleanDuplicates(){
   // Clean DataTrades (compound key: ID+EntryTime+Entry+Side — NOT ID alone)
   // Reason: float precision in Sheets collapses float IDs
   var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
-  if(dtSh&amp;&amp;dtSh.getLastRow()&gt;1){
+  if(dtSh&&dtSh.getLastRow()>1){
     var dtHdr2=dtSh.getRange(1,1,1,dtSh.getLastColumn()).getValues()[0];
     var dtIdCol=0;
-    var dtTimeCol=dtHdr2.indexOf('EntryTime'); if(dtTimeCol&lt;0)dtTimeCol=7;
-    var dtEntryCol=dtHdr2.indexOf('Entry'); if(dtEntryCol&lt;0)dtEntryCol=18;
-    var dtSideCol=dtHdr2.indexOf('Side'); if(dtSideCol&lt;0)dtSideCol=6;
+    var dtTimeCol=dtHdr2.indexOf('EntryTime'); if(dtTimeCol<0)dtTimeCol=7;
+    var dtEntryCol=dtHdr2.indexOf('Entry'); if(dtEntryCol<0)dtEntryCol=18;
+    var dtSideCol=dtHdr2.indexOf('Side'); if(dtSideCol<0)dtSideCol=6;
     var dtData=dtSh.getDataRange().getValues();
     var dtSeen={}; var dtDel=[];
-    for(var i=dtData.length-1;i&gt;=1;i--){
+    for(var i=dtData.length-1;i>=1;i--){
       var dtid=String(dtData[i][dtIdCol]).trim();
       if(!dtid){ dtDel.push(i+1); continue; }
       var dtKey=dtid+'|'+String(dtData[i][dtTimeCol]).trim().substring(0,5)+'|'+String(dtData[i][dtEntryCol]).trim()+'|'+String(dtData[i][dtSideCol]).trim();
@@ -2275,8 +2306,8 @@ function setupSheets(){
   _sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var def=ss.getSheetByName('Sheet1');
-  if(def&amp;&amp;ss.getSheets().length&gt;1) ss.deleteSheet(def);
-  SpreadsheetApp.getUi().alert('✅ TradeLog Pro+ v5.1 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ');
+  if(def&&ss.getSheets().length>1) ss.deleteSheet(def);
+  SpreadsheetApp.getUi().alert('✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ');
 }
 function onOpen(){
   SpreadsheetApp.getUi().createMenu('🔧 TradeLog Pro+')
@@ -2298,7 +2329,7 @@ function refreshAll(){
 }
 function clearLog(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.LOG);
-  if(sh&amp;&amp;sh.getLastRow()&gt;1) sh.deleteRows(2,sh.getLastRow()-1);
+  if(sh&&sh.getLastRow()>1) sh.deleteRows(2,sh.getLastRow()-1);
 }</div>
     <button class="btn-sm" style="margin-top:5px;" onclick="copyCode()">📋 Copy</button></div>
     <div style="margin-top:12px;">
