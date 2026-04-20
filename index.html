@@ -1511,7 +1511,7 @@ var TRADE_FIELD_NAMES=[
 var HDR={
   TRADES:TRADE_FIELD_NAMES,
   DATA_TRADES:[
-    &#x27;ID&#x27;,&#x27;Date&#x27;,&#x27;Day&#x27;,&#x27;Portfolio&#x27;,
+    &#x27;ID&#x27;,&#x27;Date&#x27;,&#x27;Portfolio&#x27;,
     &#x27;Session&#x27;,&#x27;Asset&#x27;,&#x27;Side&#x27;,
     &#x27;Entry&#x27;,&#x27;Close&#x27;,&#x27;TP&#x27;,&#x27;SL&#x27;,&#x27;FiboLevel&#x27;,
     &#x27;PnL($)&#x27;,&#x27;Fees($)&#x27;,&#x27;Commission($)&#x27;,&#x27;Result&#x27;,&#x27;Risk&#x27;,&#x27;MaxRR&#x27;,&#x27;Lots&#x27;,
@@ -1826,7 +1826,7 @@ function saveDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var id=String(d._id||d.id||Date.now());
   var row=[
-    id, d.date||&#x27;&#x27;, d.day||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
+    id, d.date||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
     d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;, d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;,
     d.mode||&#x27;&#x27;, d.code||&#x27;&#x27;, d.tf||&#x27;&#x27;, d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;,
     d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
@@ -1857,7 +1857,7 @@ function batchSaveDataTrades(d){
     var id=String(t._id||t.id)||(Date.now().toString(36)+Math.random().toString(36).slice(2,10));
     var pnl=parseFloat(t.pnl)||0;
     var row=[
-      id, t.date||&#x27;&#x27;, t.day||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
+      id, t.date||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
       t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;, t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
       t.mode||&#x27;&#x27;, t.code||&#x27;&#x27;, t.tf||&#x27;&#x27;, t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;,
       t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
@@ -2933,8 +2933,7 @@ function syncFromSheet(onDone){
               _id:       id,
               date:      gs2(t,['Date','date']),
               day:       (function(){
-                var dayVal=gs2(t,['Day','day']);
-                if(dayVal) return dayVal;
+                // Day computed from Date — not stored in Sheet anymore
                 var dateStr=gs2(t,['Date','date']);
                 if(!dateStr) return '';
                 try{var _d=new Date(dateStr);var _dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return isNaN(_d)?'':_dn[_d.getDay()];}catch(e){return '';}
@@ -7863,7 +7862,7 @@ function dtSaveTrade(){
   var assetVal=(document.getElementById('dtAssetSel')||{}).value||gs('dtAsset')||'';
   var t={
     _id:DT.editIdx>=0&&DT.trades[DT.editIdx]?DT.trades[DT.editIdx]._id:_uuid(),
-    date:dateOnly,day:dayName,session:sessionVal,
+    date:dateOnly,session:sessionVal,
     asset:assetVal,side:DT.side,
     entryTime:timeOnly,duration:'',setupDuration:gv('dtSetupDur'),
     timeInPos:gv('dtTimePos'),
