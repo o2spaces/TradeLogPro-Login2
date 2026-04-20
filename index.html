@@ -2578,6 +2578,692 @@ function clearLog(){
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+//  AUTH SYSTEM  —  reads AUTH_GAS_URL from config.js
+// ══════════════════════════════════════════════════════════════
+var _authSession = null;
+
+// ── Unified trade ID generator (UUID-like, no float precision loss) ──
+function _uuid(){
+  // 16 bytes → hex string, no dashes = 32 char unique ID
+  if(crypto&&crypto.getRandomValues){
+    var b=new Uint8Array(12);
+    crypto.getRandomValues(b);
+    return Array.from(b).map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+  }
+  // fallback
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+}
+
+
+// SHA-256 (native Web Crypto)
+async function _sha256(str){
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+// Called once at page load
+function _authInit(){
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+
+  if(!url){
+    document.getElementById('authNoUrl').style.display = 'block';
+    document.getElementById('authBtn').disabled = true;
+    document.getElementById('authBtn').textContent = '⚠️ ระบบยังไม่พร้อม';
+    var gw = document.getElementById('googleSignInWrap');
+    if(gw) gw.style.display = 'none';
+    document.getElementById('authOverlay').style.display = 'flex';
+    return;
+  }
+
+  // Check saved session
+  try{
+    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+    if(saved && saved.username && saved.expiry > Date.now()){
+      _authSession = saved;
+      _authApply(saved);
+      document.getElementById('authOverlay').style.display = 'none';
+      // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
+      var localUrl = localStorage.getItem('tj_url') || '';
+      if(!saved.scriptUrl && !localUrl){
+        _showSetupSheetOverlay();
+      }
+      return;
+    }
+  }catch(e){}
+
+  document.getElementById('authOverlay').style.display = 'flex';
+  // Init Google One Tap
+  _initGoogleOneTap(url);
+}
+
+// ── Google One Tap / Sign-In ───────────────────────────────────
+function _initGoogleOneTap(authUrl){
+  // One Tap ต้องใช้ Google Client ID — ถ้าไม่มีก็ใช้ popup แทน
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(!clientId || !window.google) return;
+  try{
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: function(resp){ _handleGoogleCredential(resp.credential); },
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+    google.accounts.id.prompt();
+  }catch(e){}
+}
+
+// Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
+async function authGoogleSignIn(){
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
+
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(clientId && window.google && google.accounts){
+    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
+    if(google.accounts.oauth2){
+      try{
+        google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile',
+          prompt: 'select_account',
+          callback: function(tokenResp){
+            if(tokenResp && tokenResp.access_token){
+              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
+              }).then(function(r){ return r.json(); })
+                .then(function(info){
+                  var email = (info.email || '').toLowerCase().trim();
+                  var name  = info.name || email;
+                  if(email) _processGoogleLogin(email, name);
+                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
+            }
+          }
+        }).requestAccessToken();
+        return;
+      }catch(e){}
+    }
+    // fallback: One Tap popup mode
+    try{
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: function(resp){ _handleGoogleCredential(resp.credential); },
+        ux_mode: 'popup'
+      });
+      google.accounts.id.prompt(function(notification){
+        if(notification.isNotDisplayed() || notification.isSkippedMoment()){
+          _googlePopupFallback();
+        }
+      });
+      return;
+    }catch(e2){}
+  }
+  _googlePopupFallback();
+}
+
+function _googlePopupFallback(){
+  // สร้าง account chooser modal แทน window.prompt()
+  _showGoogleAccountChooser();
+}
+
+function _showGoogleAccountChooser(){
+  var hints = [];
+  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
+
+  var existing = document.getElementById('_googleAccChooser');
+  if(existing) existing.remove();
+
+  // Build overlay
+  var overlay = document.createElement('div');
+  overlay.id = '_googleAccChooser';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+
+  // Card
+  var card = document.createElement('div');
+  card.style.cssText = 'background:#1a1e2a;border:1px solid #2a2f3d;border-radius:16px;width:360px;max-width:94vw;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.8);';
+
+  // --- Header ---
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:18px 20px 0;display:flex;align-items:center;gap:10px;';
+
+  var gLogo = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  gLogo.setAttribute('width','22'); gLogo.setAttribute('height','22'); gLogo.setAttribute('viewBox','0 0 18 18');
+  gLogo.innerHTML = '<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>';
+
+  var titleWrap = document.createElement('div');
+  var titleEl = document.createElement('div');
+  titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#f4f6ff;';
+  titleEl.textContent = 'เลือกบัญชี';
+  var subEl = document.createElement('div');
+  subEl.style.cssText = 'font-size:10px;color:#7a8299;';
+  subEl.textContent = 'เพื่อเข้าสู่ TradeLog Pro+';
+  titleWrap.appendChild(titleEl);
+  titleWrap.appendChild(subEl);
+
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:#7a8299;cursor:pointer;font-size:20px;line-height:1;padding:4px 0;';
+  closeBtn.onclick = function(){ overlay.remove(); };
+
+  hdr.appendChild(gLogo);
+  hdr.appendChild(titleWrap);
+  hdr.appendChild(closeBtn);
+  card.appendChild(hdr);
+
+  // --- Account list ---
+  var listWrap = document.createElement('div');
+  listWrap.style.cssText = 'max-height:280px;overflow-y:auto;margin-top:10px;';
+  var colors = ['#4f7aff','#2ecc8a','#f5a623','#a855f7','#22d3ee'];
+
+  hints.forEach(function(h, i){
+    var row = _buildAccRow(h.email, h.name, colors[i % colors.length]);
+    row.onclick = function(){ _selectGoogleAccount(h.email, h.name); };
+    listWrap.appendChild(row);
+  });
+
+  // "Use another account" row
+  var otherRow = document.createElement('div');
+  otherRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;';
+  otherRow.onmouseover = function(){ this.style.background='#252a38'; };
+  otherRow.onmouseout  = function(){ this.style.background='transparent'; };
+
+  var otherIcon = document.createElement('div');
+  otherIcon.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2f3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+  otherIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b0b7cc" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+  var otherLabel = document.createElement('div');
+  otherLabel.style.cssText = 'font-size:13px;color:#b0b7cc;';
+  otherLabel.textContent = 'ใช้บัญชีอื่น';
+  otherRow.appendChild(otherIcon);
+  otherRow.appendChild(otherLabel);
+  otherRow.onclick = _googleManualEntry;
+  listWrap.appendChild(otherRow);
+  card.appendChild(listWrap);
+
+  // --- Manual input box ---
+  var manualBox = document.createElement('div');
+  manualBox.id = '_googleManualBox';
+  manualBox.style.cssText = 'display:none;padding:14px 20px;border-top:1px solid #2a2f3d;';
+
+  var emailLabel = document.createElement('div');
+  emailLabel.style.cssText = 'font-size:11px;color:#7a8299;margin-bottom:6px;';
+  emailLabel.textContent = 'กรอก Gmail ของคุณ';
+
+  var emailInput = document.createElement('input');
+  emailInput.id = '_googleEmailInput';
+  emailInput.type = 'email';
+  emailInput.placeholder = 'example@gmail.com';
+  emailInput.style.cssText = 'width:100%;background:#0f1117;border:1px solid #2a2f3d;color:#f4f6ff;border-radius:6px;padding:8px 11px;font-size:13px;outline:none;box-sizing:border-box;';
+  emailInput.onfocus = function(){ this.style.borderColor='#4f7aff'; };
+  emailInput.onblur  = function(){ this.style.borderColor='#2a2f3d'; };
+  emailInput.onkeydown = function(e){ if(e.key==='Enter') _googleManualSubmit(); };
+
+  var submitBtn = document.createElement('button');
+  submitBtn.textContent = 'ถัดไป';
+  submitBtn.style.cssText = 'width:100%;margin-top:8px;background:#4f7aff;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;';
+  submitBtn.onclick = _googleManualSubmit;
+
+  manualBox.appendChild(emailLabel);
+  manualBox.appendChild(emailInput);
+  manualBox.appendChild(submitBtn);
+  card.appendChild(manualBox);
+
+  // --- Footer note ---
+  var footer = document.createElement('div');
+  footer.style.cssText = 'padding:10px 20px;border-top:1px solid #2a2f3d;font-size:10px;color:#7a8299;text-align:center;';
+  footer.textContent = 'ระบบจะตรวจสอบ email กับฐานข้อมูลผู้ใช้';
+  card.appendChild(footer);
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+
+function _buildAccRow(email, name, color){
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;border-bottom:1px solid #2a2f3d;';
+  row.onmouseover = function(){ this.style.background='#252a38'; };
+  row.onmouseout  = function(){ this.style.background='transparent'; };
+  var initials = (name||email).charAt(0).toUpperCase();
+  var avatar = document.createElement('div');
+  avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;';
+  avatar.textContent = initials;
+  var info = document.createElement('div');
+  var nameEl = document.createElement('div');
+  nameEl.style.cssText = 'font-size:13px;font-weight:500;color:#f4f6ff;';
+  nameEl.textContent = name || email;
+  var emailEl = document.createElement('div');
+  emailEl.style.cssText = 'font-size:11px;color:#7a8299;';
+  emailEl.textContent = email;
+  info.appendChild(nameEl);
+  info.appendChild(emailEl);
+  row.appendChild(avatar);
+  row.appendChild(info);
+  return row;
+}
+
+
+function _selectGoogleAccount(email, name){
+  var overlay = document.getElementById('_googleAccChooser');
+  if(overlay) overlay.remove();
+  _processGoogleLogin(email.trim().toLowerCase(), name||email);
+}
+
+function _googleManualEntry(){
+  var box = document.getElementById('_googleManualBox');
+  if(box){
+    box.style.display = 'block';
+    var inp = document.getElementById('_googleEmailInput');
+    if(inp) setTimeout(function(){ inp.focus(); }, 50);
+  }
+}
+
+function _googleManualSubmit(){
+  var inp = document.getElementById('_googleEmailInput');
+  var email = (inp ? inp.value : '').trim().toLowerCase();
+  if(!email || !email.includes('@')){
+    if(inp){ inp.style.borderColor='#ff4d6a'; setTimeout(function(){ inp.style.borderColor='#2a2f3d'; },1500); }
+    return;
+  }
+  var name = email.split('@')[0];
+  // บันทึกเป็น hint สำหรับครั้งต่อไป
+  var hints = [];
+  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
+  if(!hints.find(function(h){ return h.email===email; })){
+    hints.unshift({ email: email, name: name });
+    if(hints.length > 5) hints = hints.slice(0,5);
+    localStorage.setItem('tj_google_hints', JSON.stringify(hints));
+  }
+  var overlay = document.getElementById('_googleAccChooser');
+  if(overlay) overlay.remove();
+  _processGoogleLogin(email, name);
+}
+
+async function _handleGoogleCredential(credential){
+  // Decode JWT payload (ไม่ต้อง verify signature เพราะ GAS จะ verify เอง)
+  try{
+    var parts   = credential.split('.');
+    var payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    var email   = (payload.email || '').toLowerCase().trim();
+    var name    = payload.name || email;
+    if(!email) throw new Error('No email in token');
+    await _processGoogleLogin(email, name);
+  }catch(e){
+    showToast('Google Sign-In ล้มเหลว: ' + e.message, 'error');
+  }
+}
+
+async function _processGoogleLogin(email, name){
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!url) return;
+
+  var btn = document.getElementById('authBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ...'; }
+  var gBtn = document.querySelector('.auth-google-btn');
+  if(gBtn){ gBtn.disabled = true; gBtn.style.opacity = '.6'; }
+
+  try{
+    var res  = await fetch(url + '?action=googleLogin&email=' + encodeURIComponent(email) + '&name=' + encodeURIComponent(name));
+    var data = await res.json();
+
+    if(data.status === 'ok'){
+      var session = {
+        username:    data.username,
+        displayName: data.displayName || name,
+        role:        data.role,
+        scriptUrl:   data.scriptUrl || '',
+        loginType:   'google',
+        expiry:      Date.now() + 7 * 24 * 60 * 60 * 1000  // Google session = 7 วัน
+      };
+      // บันทึก account hint เพื่อแสดงใน account chooser ครั้งต่อไป
+      try{
+        var _hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]');
+        var _ei = _hints.findIndex(function(h){ return h.email===email; });
+        if(_ei >= 0) _hints.splice(_ei, 1);
+        _hints.unshift({ email: email, name: session.displayName || name });
+        if(_hints.length > 5) _hints = _hints.slice(0,5);
+        localStorage.setItem('tj_google_hints', JSON.stringify(_hints));
+      }catch(e){}
+      localStorage.setItem('tj_session', JSON.stringify(session));
+      _authSession = session;
+      if(session.scriptUrl){
+        S.scriptUrl = session.scriptUrl;
+        localStorage.setItem('tj_url', session.scriptUrl);
+      }
+      _authApply(session);
+      var ov = document.getElementById('authOverlay');
+      ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
+      setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
+
+      if(data.isNew){
+        showToast('🎉 สร้างบัญชีด้วย Google สำเร็จ! ยินดีต้อนรับ ' + session.displayName, 'success');
+      } else {
+        showToast('👋 ยินดีต้อนรับกลับ ' + session.displayName + '!', 'success');
+      }
+
+      // ถ้าไม่มี scriptUrl → แสดง setup overlay
+      if(!session.scriptUrl && !localStorage.getItem('tj_url')){
+        setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
+      } else if(S.scriptUrl && !window._initSyncDone){
+        setConn(true); syncFromSheet();
+      } else if(S.scriptUrl){
+        setConn(true);
+      }
+    } else {
+      showToast('❌ ' + (data.msg || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ'), 'error');
+    }
+  }catch(e){
+    showToast('❌ เชื่อมต่อ Auth Server ไม่ได้: ' + e.message, 'error');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ'; }
+    if(gBtn){ gBtn.disabled = false; gBtn.style.opacity = '1'; }
+  }
+}
+
+// ── Username/Password Login ────────────────────────────────────
+async function authDoLogin(){
+  var user = (document.getElementById('authUser').value || '').trim().toLowerCase();
+  var pass = document.getElementById('authPass').value || '';
+  var btn  = document.getElementById('authBtn');
+  var err  = document.getElementById('authErr');
+  err.style.display = 'none';
+
+  if(!user || !pass){
+    err.textContent = '❌ กรุณากรอก Username และ Password';
+    err.style.display = 'block'; return;
+  }
+
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!url){
+    err.textContent = '❌ ระบบยังไม่ได้ตั้งค่า กรุณาติดต่อ Admin';
+    err.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ...';
+
+  try{
+    var hash = await _sha256(pass);
+    var res  = await fetch(url + '?action=login&username=' + encodeURIComponent(user) + '&passwordHash=' + encodeURIComponent(hash));
+    var data = await res.json();
+
+    if(data.status === 'ok'){
+      var session = {
+        username:    data.username,
+        displayName: data.displayName || data.username,
+        role:        data.role,
+        scriptUrl:   data.scriptUrl || '',
+        _hash:       hash,
+        loginType:   'password',
+        expiry:      Date.now() + 24 * 60 * 60 * 1000
+      };
+      localStorage.setItem('tj_session', JSON.stringify(session));
+      _authSession = session;
+      if(session.scriptUrl){
+        S.scriptUrl = session.scriptUrl;
+        localStorage.setItem('tj_url', session.scriptUrl);
+      }
+      _authApply(session);
+      var ov = document.getElementById('authOverlay');
+      ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
+      setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
+      showToast('👋 ยินดีต้อนรับ ' + session.displayName + '!', 'success');
+
+      // ถ้าไม่มี scriptUrl → แสดง setup overlay
+      var localUrl = localStorage.getItem('tj_url') || '';
+      if(!session.scriptUrl && !localUrl){
+        setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
+      } else if(S.scriptUrl && !window._initSyncDone){
+        setConn(true); syncFromSheet();
+      } else if(S.scriptUrl){
+        setConn(true);
+      }
+    } else {
+      err.textContent = '❌ ' + (data.msg || 'Username หรือ Password ไม่ถูกต้อง');
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ';
+    }
+  }catch(e){
+    err.textContent = '❌ เชื่อมต่อ Auth Server ไม่ได้ (' + (e.message||'network error') + ')';
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ';
+  }
+}
+
+function _authApply(session){
+  var chip   = document.getElementById('userChip');
+  var uname  = document.getElementById('userDisplayName');
+  var avatar = document.getElementById('userAvatar');
+  if(chip)   chip.style.display   = 'flex';
+  if(uname)  uname.textContent    = session.displayName || session.username;
+  if(avatar) avatar.textContent   = (session.displayName || session.username).charAt(0).toUpperCase();
+  if(session.role === 'admin'){
+    var ab = document.getElementById('adminBtn');
+    if(ab) ab.style.display = '';
+  }
+  var lb = document.getElementById('logoutBtn');
+  if(lb) lb.style.display = '';
+  // แสดงเมนู "ตั้งค่า Sheet URL ของฉัน" เมื่อ login ด้วย auth system
+  var menuSetup = document.getElementById('menuSetupSheet');
+  if(menuSetup) menuSetup.style.display = '';
+  // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
+  var urlToUse = session.scriptUrl || localStorage.getItem('tj_url') || '';
+  if(urlToUse) S.scriptUrl = urlToUse;
+}
+
+function authLogout(){
+  if(!confirm('ออกจากระบบ?')) return;
+  localStorage.removeItem('tj_session');
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SETUP SHEET URL OVERLAY
+//  แสดงหลัง login เมื่อ User ยังไม่มี scriptUrl
+// ══════════════════════════════════════════════════════════════
+function _showSetupSheetOverlay(){
+  var ov = document.getElementById('setupSheetOverlay');
+  if(ov){ ov.classList.add('open'); }
+  // โหลด URL ที่อาจมีใน localStorage แล้ว (ใส่ค้างไว้)
+  var inp = document.getElementById('setupSheetUrl');
+  if(inp) inp.value = localStorage.getItem('tj_url') || '';
+}
+
+async function setupSheetTest(){
+  var url = (document.getElementById('setupSheetUrl').value || '').trim();
+  var err = document.getElementById('setupSheetErr');
+  err.style.display = 'none';
+  if(!url){ err.textContent = '❌ กรุณาใส่ URL ก่อน'; err.style.display='block'; return; }
+  if(!url.includes('script.google.com')){ err.textContent = '❌ URL ไม่ถูกต้อง — ต้องขึ้นต้นด้วย https://script.google.com/macros/s/'; err.style.display='block'; return; }
+  showToast('🔄 กำลังทดสอบ...', 'success');
+  try{
+    var res  = await fetch(url + '?action=ping');
+    var data = await res.json();
+    if(data.status === 'ok' || data.sheets || data.portfolios !== undefined){
+      showToast('✅ เชื่อมต่อ Sheet สำเร็จ!', 'success');
+    } else {
+      showToast('⚠️ Sheet ตอบกลับแล้ว แต่ไม่แน่ใจ format — ลองบันทึกได้เลย', 'success');
+    }
+  }catch(e){
+    err.textContent = '❌ เชื่อมต่อไม่ได้: ' + e.message;
+    err.style.display = 'block';
+  }
+}
+
+async function setupSheetSave(){
+  var url  = (document.getElementById('setupSheetUrl').value || '').trim();
+  var btn  = document.getElementById('setupSheetBtn');
+  var err  = document.getElementById('setupSheetErr');
+  err.style.display = 'none';
+
+  if(!url){
+    err.textContent = '❌ กรุณาใส่ Script URL ก่อน';
+    err.style.display = 'block'; return;
+  }
+  if(!url.startsWith('https://script.google.com')){
+    err.textContent = '❌ URL ไม่ถูกต้อง ต้องเป็น https://script.google.com/macros/s/.../exec';
+    err.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
+
+  // บันทึกใน localStorage เสมอ
+  S.scriptUrl = url;
+  localStorage.setItem('tj_url', url);
+
+  // อัปเดต session ใน memory
+  if(_authSession){ _authSession.scriptUrl = url; }
+
+  // ส่งกลับ Auth Server ให้จำสำหรับ login ครั้งหน้า (ถ้ามี password hash)
+  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(authUrl && _authSession && _authSession._hash){
+    try{
+      await fetch(authUrl, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          action:       'updateScriptUrl',
+          username:     _authSession.username,
+          passwordHash: _authSession._hash,
+          scriptUrl:    url
+        })
+      });
+      // อัปเดต session ที่เก็บไว้ด้วย
+      var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+      if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+    }catch(e){ console.warn('updateScriptUrl failed:', e); }
+  } else if(authUrl && _authSession && _authSession.loginType === 'google'){
+    // Google login ไม่มี hash — บันทึกแค่ localStorage ก็พอ (session expire แล้ว sync กลับ Auth ไม่ได้)
+    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+    if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+  }
+
+  btn.disabled = false; btn.textContent = '✅ บันทึกและเชื่อมต่อ';
+
+  // ปิด overlay และ sync
+  var ov = document.getElementById('setupSheetOverlay');
+  if(ov){ ov.classList.remove('open'); }
+  setConn(true);
+  showToast('✅ บันทึก Sheet URL แล้ว — กำลัง Sync...', 'success');
+  syncFromSheet();
+}
+
+function setupSheetSkip(){
+  var ov = document.getElementById('setupSheetOverlay');
+  if(ov){ ov.classList.remove('open'); }
+  showToast('📱 ใช้งานแบบ Local — ข้อมูลเก็บใน Browser เท่านั้น', 'success');
+}
+
+// ── เพิ่มปุ่ม "เปลี่ยน Sheet URL" ในเมนู ⚙ Settings สำหรับ User ──
+function openSetupSheetFromMenu(){
+  _showSetupSheetOverlay();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════════════════════════════
+function openAdminPanel(){
+  if(!_authSession || _authSession.role !== 'admin'){ showToast('❌ เฉพาะ Admin เท่านั้น','error'); return; }
+  document.getElementById('mAdmin').classList.add('open');
+  document.body.classList.add('modal-open');
+  adminLoadUsers();
+}
+function closeAdminPanel(){
+  document.getElementById('mAdmin').classList.remove('open');
+  document.body.classList.remove('modal-open');
+}
+
+function adminLoadUsers(){
+  var tbody = document.getElementById('adminBody');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!url){ tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
+
+  fetch(url + '?action=getUsers&adminUser=' + encodeURIComponent(_authSession.username))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.status !== 'ok'){
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
+      }
+      var users = d.users || [];
+      var today = new Date().toDateString();
+      var todayCount  = users.filter(function(u){ return u.lastLogin && new Date(u.lastLogin).toDateString()===today; }).length;
+      var adminCount  = users.filter(function(u){ return u.role==='admin'; }).length;
+      document.getElementById('stTotal').textContent  = users.length;
+      document.getElementById('stToday').textContent  = todayCount;
+      document.getElementById('stAdmins').textContent = adminCount;
+
+      if(!users.length){
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
+      }
+      tbody.innerHTML = users.map(function(u){
+        var isToday  = u.lastLogin && new Date(u.lastLogin).toDateString()===today;
+        var llStr    = u.lastLogin ? new Date(u.lastLogin).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '<span style="color:var(--text-muted)">ยังไม่เคย</span>';
+        var urlShort = u.scriptUrl ? u.scriptUrl.replace('https://script.google.com/macros/s/','…/').substring(0,36)+'…' : '<span style="color:var(--text-muted)">—</span>';
+        var isSelf   = u.username === _authSession.username;
+        return '<tr>'
+          + '<td><span style="font-weight:600;">' + (isToday?'<span class="online-pip"></span>':'') + u.username + '</span>'
+          + (u.displayName && u.displayName!==u.username ? '<div style="font-size:9px;color:var(--text-muted);">'+u.displayName+'</div>' : '') + '</td>'
+          + '<td><span class="role-badge '+(u.role==='admin'?'admin':'user')+'">'+(u.role==='admin'?'🛡 Admin':'👤 User')+'</span></td>'
+          + '<td>' + llStr + '</td>'
+          + '<td style="text-align:center;font-family:var(--font-mono);font-weight:600;color:var(--accent);">' + (u.loginCount||0) + '</td>'
+          + '<td style="font-size:9px;font-family:var(--font-mono);color:var(--teal);">' + urlShort + '</td>'
+          + '<td style="text-align:center;">'
+          + (isSelf ? '<span style="color:var(--text-muted);font-size:10px;">—</span>'
+            : '<button onclick="adminDeleteUser(\''+u.username+'\')" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;padding:2px 8px;border-radius:4px;font-size:10px;" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-muted)\'">✕ ลบ</button>')
+          + '</td></tr>';
+      }).join('');
+    })
+    .catch(function(e){
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
+    });
+}
+
+async function adminAddUser(){
+  var uname   = (document.getElementById('regUser').value    || '').trim().toLowerCase();
+  var pass    = document.getElementById('regPass').value     || '';
+  var role    = document.getElementById('regRole').value     || 'user';
+  var script  = (document.getElementById('regScript').value  || '').trim();
+  var display = (document.getElementById('regDisplay').value || '').trim();
+  var errEl   = document.getElementById('regErr');
+  var btn     = document.getElementById('regBtn');
+  errEl.style.display = 'none';
+
+  if(!uname || !pass){ errEl.textContent='❌ กรอก Username และ Password ก่อน'; errEl.style.display='block'; return; }
+
+  btn.disabled=true; btn.textContent='⏳ กำลังสร้าง...';
+  try{
+    var hash = await _sha256(pass);
+    var url  = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+    var res  = await fetch(url, { method:'POST', body:JSON.stringify({
+      action:'registerUser', adminUser:_authSession.username,
+      username:uname, passwordHash:hash, role:role,
+      scriptUrl:script, displayName:display||uname
+    })});
+    var data = await res.json();
+    if(data.status==='ok'){
+      showToast('✅ เพิ่ม User "'+uname+'" สำเร็จ','success');
+      ['regUser','regPass','regScript','regDisplay'].forEach(function(id){ document.getElementById(id).value=''; });
+      adminLoadUsers();
+    } else {
+      errEl.textContent = '❌ ' + (data.msg||'เกิดข้อผิดพลาด'); errEl.style.display='block';
+    }
+  }catch(e){ errEl.textContent='❌ เชื่อมต่อไม่ได้: '+e.message; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent='➕ เพิ่ม User';
+}
+
+function adminDeleteUser(username){
+  if(!confirm('ลบ User "'+username+'" ออกจากระบบ?\n\nGoogle Sheet ของ User จะไม่ถูกลบ')) return;
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  fetch(url, { method:'POST', body:JSON.stringify({ action:'deleteUser', adminUser:_authSession.username, username:username }) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.status==='ok'){ showToast('✅ ลบ User เสร็จแล้ว','success'); adminLoadUsers(); }
+      else showToast('❌ '+(d.msg||'error'),'error');
+    }).catch(function(){ showToast('❌ เชื่อมต่อไม่ได้','error'); });
+}
+</script>
+
+<script>
 // Fees = Exchange/broker fee per lot (round trip)
 var FEES={NQ1:2.80,MNQ1:0.74,GC1:3.24,MGC1:1.24,'XAU/USD':0,EURUSD:0,GBPUSD:0,USDJPY:0,BTCUSD:0};
 // Commission = Topstep platform fee per entry (round trip, fixed per trade)
@@ -3064,7 +3750,30 @@ function syncFromSheet(onDone){
         }
       }
       setConn(false);
+      _setCalLoadingState(false); // ปลด loading overlay แม้ sync ล้มเหลว
+      if(onDone) onDone();
     });
+}
+
+function _setCalLoadingState(loading){
+  // ป้องกัน calendar แสดงข้อมูล local เก่าก่อน sheet ตอบกลับ
+  var mainArea = document.querySelector('.main');
+  var overlay = document.getElementById('_calSyncOverlay');
+  if(loading){
+    if(!overlay && mainArea){
+      overlay = document.createElement('div');
+      overlay.id = '_calSyncOverlay';
+      overlay.style.cssText = 'position:absolute;inset:0;background:var(--bg-primary);opacity:.85;z-index:99;display:flex;align-items:center;justify-content:center;border-radius:8px;';
+      overlay.innerHTML = '<div style="text-align:center;">'
+        + '<div style="font-size:20px;margin-bottom:8px;">⏳</div>'
+        + '<div style="font-size:13px;color:var(--text-secondary);font-family:var(--font-main);">กำลังโหลดข้อมูลจาก Sheet...</div>'
+        + '</div>';
+      mainArea.style.position = 'relative';
+      mainArea.appendChild(overlay);
+    }
+  } else {
+    if(overlay) overlay.remove();
+  }
 }
 
 function init(){
@@ -3091,7 +3800,13 @@ function init(){
     renderPortfolioBar(); // แสดง local ports ก่อน
     // Sync เมื่อมี scriptUrl และมี session (login แล้ว) หรือไม่ได้ใช้ auth system
     var hasAuth = (typeof window.AUTH_GAS_URL !== 'undefined') && window.AUTH_GAS_URL;
-    if(S.scriptUrl && (_authSession || !hasAuth)){ setConn(true); syncFromSheet(); }
+    if(S.scriptUrl && (_authSession || !hasAuth)){
+      setConn(true);
+      // แสดง loading skeleton บน calendar ระหว่างรอ sync
+      // เพื่อป้องกัน local cache เก่าโผล่ก่อน sheet ตอบกลับ
+      _setCalLoadingState(true);
+      syncFromSheet(function(){ _setCalLoadingState(false); });
+    }
     window._initSyncDone = !!(S.scriptUrl && (_authSession || !hasAuth));
     updateBadge();
   }catch(e){}
@@ -11577,514 +12292,6 @@ document.addEventListener('mouseup', function(){
 </div>
 
 <!-- ─── AUTH + ADMIN JAVASCRIPT ──────────────────────────────── -->
-<script>
-// ══════════════════════════════════════════════════════════════
-//  AUTH SYSTEM  —  reads AUTH_GAS_URL from config.js
-// ══════════════════════════════════════════════════════════════
-var _authSession = null;
-
-// ── Unified trade ID generator (UUID-like, no float precision loss) ──
-function _uuid(){
-  // 16 bytes → hex string, no dashes = 32 char unique ID
-  if(crypto&&crypto.getRandomValues){
-    var b=new Uint8Array(12);
-    crypto.getRandomValues(b);
-    return Array.from(b).map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
-  }
-  // fallback
-  return Date.now().toString(36)+Math.random().toString(36).slice(2,10);
-}
-
-
-// SHA-256 (native Web Crypto)
-async function _sha256(str){
-  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-}
-
-// Called once at page load
-function _authInit(){
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-
-  if(!url){
-    document.getElementById('authNoUrl').style.display = 'block';
-    document.getElementById('authBtn').disabled = true;
-    document.getElementById('authBtn').textContent = '⚠️ ระบบยังไม่พร้อม';
-    var gw = document.getElementById('googleSignInWrap');
-    if(gw) gw.style.display = 'none';
-    document.getElementById('authOverlay').style.display = 'flex';
-    return;
-  }
-
-  // Check saved session
-  try{
-    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-    if(saved && saved.username && saved.expiry > Date.now()){
-      _authSession = saved;
-      _authApply(saved);
-      document.getElementById('authOverlay').style.display = 'none';
-      // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
-      var localUrl = localStorage.getItem('tj_url') || '';
-      if(!saved.scriptUrl && !localUrl){
-        _showSetupSheetOverlay();
-      }
-      return;
-    }
-  }catch(e){}
-
-  document.getElementById('authOverlay').style.display = 'flex';
-  // Init Google One Tap
-  _initGoogleOneTap(url);
-}
-
-// ── Google One Tap / Sign-In ───────────────────────────────────
-function _initGoogleOneTap(authUrl){
-  // One Tap ต้องใช้ Google Client ID — ถ้าไม่มีก็ใช้ popup แทน
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId || !window.google) return;
-  try{
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: function(resp){ _handleGoogleCredential(resp.credential); },
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    google.accounts.id.prompt();
-  }catch(e){}
-}
-
-// Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
-async function authGoogleSignIn(){
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
-
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(clientId && window.google && google.accounts){
-    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
-    if(google.accounts.oauth2){
-      try{
-        google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: 'email profile',
-          prompt: 'select_account',
-          callback: function(tokenResp){
-            if(tokenResp && tokenResp.access_token){
-              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
-              }).then(function(r){ return r.json(); })
-                .then(function(info){
-                  var email = (info.email || '').toLowerCase().trim();
-                  var name  = info.name || email;
-                  if(email) _processGoogleLogin(email, name);
-                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
-            }
-          }
-        }).requestAccessToken();
-        return;
-      }catch(e){}
-    }
-    // fallback: One Tap popup mode
-    try{
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: function(resp){ _handleGoogleCredential(resp.credential); },
-        ux_mode: 'popup'
-      });
-      google.accounts.id.prompt(function(notification){
-        if(notification.isNotDisplayed() || notification.isSkippedMoment()){
-          _googlePopupFallback();
-        }
-      });
-      return;
-    }catch(e2){}
-  }
-  _googlePopupFallback();
-}
-
-function _googlePopupFallback(){
-  // fallback เมื่อไม่มี GOOGLE_CLIENT_ID
-  var email = prompt('กรอก Gmail ของคุณ (ใช้เป็น Username ในระบบ):');
-  if(!email || !email.includes('@')) return;
-  var name  = prompt('ชื่อที่ต้องการแสดง (กด Cancel เพื่อใช้ email):') || email;
-  _processGoogleLogin(email.trim().toLowerCase(), name.trim());
-}
-
-async function _handleGoogleCredential(credential){
-  // Decode JWT payload (ไม่ต้อง verify signature เพราะ GAS จะ verify เอง)
-  try{
-    var parts   = credential.split('.');
-    var payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-    var email   = (payload.email || '').toLowerCase().trim();
-    var name    = payload.name || email;
-    if(!email) throw new Error('No email in token');
-    await _processGoogleLogin(email, name);
-  }catch(e){
-    showToast('Google Sign-In ล้มเหลว: ' + e.message, 'error');
-  }
-}
-
-async function _processGoogleLogin(email, name){
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url) return;
-
-  var btn = document.getElementById('authBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ...'; }
-  var gBtn = document.querySelector('.auth-google-btn');
-  if(gBtn){ gBtn.disabled = true; gBtn.style.opacity = '.6'; }
-
-  try{
-    var res  = await fetch(url + '?action=googleLogin&email=' + encodeURIComponent(email) + '&name=' + encodeURIComponent(name));
-    var data = await res.json();
-
-    if(data.status === 'ok'){
-      var session = {
-        username:    data.username,
-        displayName: data.displayName || name,
-        role:        data.role,
-        scriptUrl:   data.scriptUrl || '',
-        loginType:   'google',
-        expiry:      Date.now() + 7 * 24 * 60 * 60 * 1000  // Google session = 7 วัน
-      };
-      localStorage.setItem('tj_session', JSON.stringify(session));
-      _authSession = session;
-      if(session.scriptUrl){
-        S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
-      }
-      _authApply(session);
-      var ov = document.getElementById('authOverlay');
-      ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
-      setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
-
-      if(data.isNew){
-        showToast('🎉 สร้างบัญชีด้วย Google สำเร็จ! ยินดีต้อนรับ ' + session.displayName, 'success');
-      } else {
-        showToast('👋 ยินดีต้อนรับกลับ ' + session.displayName + '!', 'success');
-      }
-
-      // ถ้าไม่มี scriptUrl → แสดง setup overlay
-      if(!session.scriptUrl && !localStorage.getItem('tj_url')){
-        setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
-      } else if(S.scriptUrl && !window._initSyncDone){
-        setConn(true); syncFromSheet();
-      } else if(S.scriptUrl){
-        setConn(true);
-      }
-    } else {
-      showToast('❌ ' + (data.msg || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ'), 'error');
-    }
-  }catch(e){
-    showToast('❌ เชื่อมต่อ Auth Server ไม่ได้: ' + e.message, 'error');
-  } finally {
-    if(btn){ btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ'; }
-    if(gBtn){ gBtn.disabled = false; gBtn.style.opacity = '1'; }
-  }
-}
-
-// ── Username/Password Login ────────────────────────────────────
-async function authDoLogin(){
-  var user = (document.getElementById('authUser').value || '').trim().toLowerCase();
-  var pass = document.getElementById('authPass').value || '';
-  var btn  = document.getElementById('authBtn');
-  var err  = document.getElementById('authErr');
-  err.style.display = 'none';
-
-  if(!user || !pass){
-    err.textContent = '❌ กรุณากรอก Username และ Password';
-    err.style.display = 'block'; return;
-  }
-
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){
-    err.textContent = '❌ ระบบยังไม่ได้ตั้งค่า กรุณาติดต่อ Admin';
-    err.style.display = 'block'; return;
-  }
-
-  btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ...';
-
-  try{
-    var hash = await _sha256(pass);
-    var res  = await fetch(url + '?action=login&username=' + encodeURIComponent(user) + '&passwordHash=' + encodeURIComponent(hash));
-    var data = await res.json();
-
-    if(data.status === 'ok'){
-      var session = {
-        username:    data.username,
-        displayName: data.displayName || data.username,
-        role:        data.role,
-        scriptUrl:   data.scriptUrl || '',
-        _hash:       hash,
-        loginType:   'password',
-        expiry:      Date.now() + 24 * 60 * 60 * 1000
-      };
-      localStorage.setItem('tj_session', JSON.stringify(session));
-      _authSession = session;
-      if(session.scriptUrl){
-        S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
-      }
-      _authApply(session);
-      var ov = document.getElementById('authOverlay');
-      ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
-      setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
-      showToast('👋 ยินดีต้อนรับ ' + session.displayName + '!', 'success');
-
-      // ถ้าไม่มี scriptUrl → แสดง setup overlay
-      var localUrl = localStorage.getItem('tj_url') || '';
-      if(!session.scriptUrl && !localUrl){
-        setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
-      } else if(S.scriptUrl && !window._initSyncDone){
-        setConn(true); syncFromSheet();
-      } else if(S.scriptUrl){
-        setConn(true);
-      }
-    } else {
-      err.textContent = '❌ ' + (data.msg || 'Username หรือ Password ไม่ถูกต้อง');
-      err.style.display = 'block';
-      btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ';
-    }
-  }catch(e){
-    err.textContent = '❌ เชื่อมต่อ Auth Server ไม่ได้ (' + (e.message||'network error') + ')';
-    err.style.display = 'block';
-    btn.disabled = false; btn.textContent = '🔐 เข้าสู่ระบบ';
-  }
-}
-
-function _authApply(session){
-  var chip   = document.getElementById('userChip');
-  var uname  = document.getElementById('userDisplayName');
-  var avatar = document.getElementById('userAvatar');
-  if(chip)   chip.style.display   = 'flex';
-  if(uname)  uname.textContent    = session.displayName || session.username;
-  if(avatar) avatar.textContent   = (session.displayName || session.username).charAt(0).toUpperCase();
-  if(session.role === 'admin'){
-    var ab = document.getElementById('adminBtn');
-    if(ab) ab.style.display = '';
-  }
-  var lb = document.getElementById('logoutBtn');
-  if(lb) lb.style.display = '';
-  // แสดงเมนู "ตั้งค่า Sheet URL ของฉัน" เมื่อ login ด้วย auth system
-  var menuSetup = document.getElementById('menuSetupSheet');
-  if(menuSetup) menuSetup.style.display = '';
-  // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
-  var urlToUse = session.scriptUrl || localStorage.getItem('tj_url') || '';
-  if(urlToUse) S.scriptUrl = urlToUse;
-}
-
-function authLogout(){
-  if(!confirm('ออกจากระบบ?')) return;
-  localStorage.removeItem('tj_session');
-  location.reload();
-}
-
-// ══════════════════════════════════════════════════════════════
-//  SETUP SHEET URL OVERLAY
-//  แสดงหลัง login เมื่อ User ยังไม่มี scriptUrl
-// ══════════════════════════════════════════════════════════════
-function _showSetupSheetOverlay(){
-  var ov = document.getElementById('setupSheetOverlay');
-  if(ov){ ov.classList.add('open'); }
-  // โหลด URL ที่อาจมีใน localStorage แล้ว (ใส่ค้างไว้)
-  var inp = document.getElementById('setupSheetUrl');
-  if(inp) inp.value = localStorage.getItem('tj_url') || '';
-}
-
-async function setupSheetTest(){
-  var url = (document.getElementById('setupSheetUrl').value || '').trim();
-  var err = document.getElementById('setupSheetErr');
-  err.style.display = 'none';
-  if(!url){ err.textContent = '❌ กรุณาใส่ URL ก่อน'; err.style.display='block'; return; }
-  if(!url.includes('script.google.com')){ err.textContent = '❌ URL ไม่ถูกต้อง — ต้องขึ้นต้นด้วย https://script.google.com/macros/s/'; err.style.display='block'; return; }
-  showToast('🔄 กำลังทดสอบ...', 'success');
-  try{
-    var res  = await fetch(url + '?action=ping');
-    var data = await res.json();
-    if(data.status === 'ok' || data.sheets || data.portfolios !== undefined){
-      showToast('✅ เชื่อมต่อ Sheet สำเร็จ!', 'success');
-    } else {
-      showToast('⚠️ Sheet ตอบกลับแล้ว แต่ไม่แน่ใจ format — ลองบันทึกได้เลย', 'success');
-    }
-  }catch(e){
-    err.textContent = '❌ เชื่อมต่อไม่ได้: ' + e.message;
-    err.style.display = 'block';
-  }
-}
-
-async function setupSheetSave(){
-  var url  = (document.getElementById('setupSheetUrl').value || '').trim();
-  var btn  = document.getElementById('setupSheetBtn');
-  var err  = document.getElementById('setupSheetErr');
-  err.style.display = 'none';
-
-  if(!url){
-    err.textContent = '❌ กรุณาใส่ Script URL ก่อน';
-    err.style.display = 'block'; return;
-  }
-  if(!url.startsWith('https://script.google.com')){
-    err.textContent = '❌ URL ไม่ถูกต้อง ต้องเป็น https://script.google.com/macros/s/.../exec';
-    err.style.display = 'block'; return;
-  }
-
-  btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
-
-  // บันทึกใน localStorage เสมอ
-  S.scriptUrl = url;
-  localStorage.setItem('tj_url', url);
-
-  // อัปเดต session ใน memory
-  if(_authSession){ _authSession.scriptUrl = url; }
-
-  // ส่งกลับ Auth Server ให้จำสำหรับ login ครั้งหน้า (ถ้ามี password hash)
-  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(authUrl && _authSession && _authSession._hash){
-    try{
-      await fetch(authUrl, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          action:       'updateScriptUrl',
-          username:     _authSession.username,
-          passwordHash: _authSession._hash,
-          scriptUrl:    url
-        })
-      });
-      // อัปเดต session ที่เก็บไว้ด้วย
-      var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-      if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-    }catch(e){ console.warn('updateScriptUrl failed:', e); }
-  } else if(authUrl && _authSession && _authSession.loginType === 'google'){
-    // Google login ไม่มี hash — บันทึกแค่ localStorage ก็พอ (session expire แล้ว sync กลับ Auth ไม่ได้)
-    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-    if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-  }
-
-  btn.disabled = false; btn.textContent = '✅ บันทึกและเชื่อมต่อ';
-
-  // ปิด overlay และ sync
-  var ov = document.getElementById('setupSheetOverlay');
-  if(ov){ ov.classList.remove('open'); }
-  setConn(true);
-  showToast('✅ บันทึก Sheet URL แล้ว — กำลัง Sync...', 'success');
-  syncFromSheet();
-}
-
-function setupSheetSkip(){
-  var ov = document.getElementById('setupSheetOverlay');
-  if(ov){ ov.classList.remove('open'); }
-  showToast('📱 ใช้งานแบบ Local — ข้อมูลเก็บใน Browser เท่านั้น', 'success');
-}
-
-// ── เพิ่มปุ่ม "เปลี่ยน Sheet URL" ในเมนู ⚙ Settings สำหรับ User ──
-function openSetupSheetFromMenu(){
-  _showSetupSheetOverlay();
-}
-
-// ══════════════════════════════════════════════════════════════
-//  ADMIN PANEL
-// ══════════════════════════════════════════════════════════════
-function openAdminPanel(){
-  if(!_authSession || _authSession.role !== 'admin'){ showToast('❌ เฉพาะ Admin เท่านั้น','error'); return; }
-  document.getElementById('mAdmin').classList.add('open');
-  document.body.classList.add('modal-open');
-  adminLoadUsers();
-}
-function closeAdminPanel(){
-  document.getElementById('mAdmin').classList.remove('open');
-  document.body.classList.remove('modal-open');
-}
-
-function adminLoadUsers(){
-  var tbody = document.getElementById('adminBody');
-  tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
-
-  fetch(url + '?action=getUsers&adminUser=' + encodeURIComponent(_authSession.username))
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d.status !== 'ok'){
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
-      }
-      var users = d.users || [];
-      var today = new Date().toDateString();
-      var todayCount  = users.filter(function(u){ return u.lastLogin && new Date(u.lastLogin).toDateString()===today; }).length;
-      var adminCount  = users.filter(function(u){ return u.role==='admin'; }).length;
-      document.getElementById('stTotal').textContent  = users.length;
-      document.getElementById('stToday').textContent  = todayCount;
-      document.getElementById('stAdmins').textContent = adminCount;
-
-      if(!users.length){
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
-      }
-      tbody.innerHTML = users.map(function(u){
-        var isToday  = u.lastLogin && new Date(u.lastLogin).toDateString()===today;
-        var llStr    = u.lastLogin ? new Date(u.lastLogin).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '<span style="color:var(--text-muted)">ยังไม่เคย</span>';
-        var urlShort = u.scriptUrl ? u.scriptUrl.replace('https://script.google.com/macros/s/','…/').substring(0,36)+'…' : '<span style="color:var(--text-muted)">—</span>';
-        var isSelf   = u.username === _authSession.username;
-        return '<tr>'
-          + '<td><span style="font-weight:600;">' + (isToday?'<span class="online-pip"></span>':'') + u.username + '</span>'
-          + (u.displayName && u.displayName!==u.username ? '<div style="font-size:9px;color:var(--text-muted);">'+u.displayName+'</div>' : '') + '</td>'
-          + '<td><span class="role-badge '+(u.role==='admin'?'admin':'user')+'">'+(u.role==='admin'?'🛡 Admin':'👤 User')+'</span></td>'
-          + '<td>' + llStr + '</td>'
-          + '<td style="text-align:center;font-family:var(--font-mono);font-weight:600;color:var(--accent);">' + (u.loginCount||0) + '</td>'
-          + '<td style="font-size:9px;font-family:var(--font-mono);color:var(--teal);">' + urlShort + '</td>'
-          + '<td style="text-align:center;">'
-          + (isSelf ? '<span style="color:var(--text-muted);font-size:10px;">—</span>'
-            : '<button onclick="adminDeleteUser(\''+u.username+'\')" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;padding:2px 8px;border-radius:4px;font-size:10px;" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-muted)\'">✕ ลบ</button>')
-          + '</td></tr>';
-      }).join('');
-    })
-    .catch(function(e){
-      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
-    });
-}
-
-async function adminAddUser(){
-  var uname   = (document.getElementById('regUser').value    || '').trim().toLowerCase();
-  var pass    = document.getElementById('regPass').value     || '';
-  var role    = document.getElementById('regRole').value     || 'user';
-  var script  = (document.getElementById('regScript').value  || '').trim();
-  var display = (document.getElementById('regDisplay').value || '').trim();
-  var errEl   = document.getElementById('regErr');
-  var btn     = document.getElementById('regBtn');
-  errEl.style.display = 'none';
-
-  if(!uname || !pass){ errEl.textContent='❌ กรอก Username และ Password ก่อน'; errEl.style.display='block'; return; }
-
-  btn.disabled=true; btn.textContent='⏳ กำลังสร้าง...';
-  try{
-    var hash = await _sha256(pass);
-    var url  = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-    var res  = await fetch(url, { method:'POST', body:JSON.stringify({
-      action:'registerUser', adminUser:_authSession.username,
-      username:uname, passwordHash:hash, role:role,
-      scriptUrl:script, displayName:display||uname
-    })});
-    var data = await res.json();
-    if(data.status==='ok'){
-      showToast('✅ เพิ่ม User "'+uname+'" สำเร็จ','success');
-      ['regUser','regPass','regScript','regDisplay'].forEach(function(id){ document.getElementById(id).value=''; });
-      adminLoadUsers();
-    } else {
-      errEl.textContent = '❌ ' + (data.msg||'เกิดข้อผิดพลาด'); errEl.style.display='block';
-    }
-  }catch(e){ errEl.textContent='❌ เชื่อมต่อไม่ได้: '+e.message; errEl.style.display='block'; }
-  btn.disabled=false; btn.textContent='➕ เพิ่ม User';
-}
-
-function adminDeleteUser(username){
-  if(!confirm('ลบ User "'+username+'" ออกจากระบบ?\n\nGoogle Sheet ของ User จะไม่ถูกลบ')) return;
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  fetch(url, { method:'POST', body:JSON.stringify({ action:'deleteUser', adminUser:_authSession.username, username:username }) })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d.status==='ok'){ showToast('✅ ลบ User เสร็จแล้ว','success'); adminLoadUsers(); }
-      else showToast('❌ '+(d.msg||'error'),'error');
-    }).catch(function(){ showToast('❌ เชื่อมต่อไม่ได้','error'); });
-}
-</script>
-
 <script>
 function helpTab(el, id){
   document.querySelectorAll('.help-tab').forEach(function(t){
