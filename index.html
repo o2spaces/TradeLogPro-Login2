@@ -3106,6 +3106,8 @@ async function setupSheetSave(){
 
   btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
 
+  // ล้าง local ถ้า URL เปลี่ยน ก่อนบันทึก URL ใหม่
+  _clearLocalForNewUrl(url);
   // บันทึกใน localStorage เสมอ
   S.scriptUrl = url;
   localStorage.setItem('tj_url', url);
@@ -3368,6 +3370,25 @@ function syncFromSheet(onDone){
       if(d.status!=='ok') throw new Error(d.msg||'Sheet error: status='+d.status);
 
       // ── 1. Portfolios ──
+      // FIX: ถ้า Sheet ส่ง portfolios: {} (ว่าง) → ล้าง local ด้วย
+      // เดิม: ถ้าว่างจะ skip block นี้ → ข้อมูลเก่า localStorage ยังอยู่
+      if(d.portfolios !== undefined && !Object.keys(d.portfolios).length){
+        // Sheet ว่าง → reset local เป็น default เท่านั้น
+        var allPids2=Object.keys(S.portfolios||{});
+        allPids2.forEach(function(pid){
+          localStorage.removeItem('port_'+pid+'_t');
+          localStorage.removeItem('port_'+pid+'_s');
+        });
+        localStorage.removeItem('dt_trades');
+        localStorage.removeItem('tj_send_queue');
+        _sendQueue=[];
+        S.trades={};S.sessions={};
+        S.portfolios={'default':{name:'Default',balance:0,fund:''}};
+        S.currentPortfolio='default';
+        localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
+        localStorage.setItem('tj_curport','default');
+        renderPortfolioBar();
+      }
       if(d.portfolios && Object.keys(d.portfolios).length){
         // Sheet = source of truth — ล้าง local ทั้งหมดก่อน write ใหม่
         var allKnownPorts = Object.keys(S.portfolios).concat(Object.keys(d.portfolios));
@@ -6304,9 +6325,40 @@ function openSheet_onUrlChange(){
   if(dot) dot.style.background='var(--text-muted)';
   if(txt){ txt.style.color='var(--text-muted)'; txt.textContent='URL เปลี่ยน — กด Save & Test เพื่อยืนยัน'; }
 }
+
+// ── ล้างข้อมูล local ทั้งหมดเมื่อเปลี่ยน Sheet URL ──
+// ป้องกัน: ข้อมูลเก่าหลุดไปใน Sheet ใหม่ + retry queue ส่งข้อมูลเก่า
+function _clearLocalForNewUrl(newUrl){
+  var prevUrl=localStorage.getItem('tj_url')||'';
+  if(!prevUrl||prevUrl===newUrl) return; // URL เดิม ไม่ต้องล้าง
+  console.log('[URL change] clearing local data...');
+  // ล้าง cache ทุก portfolio
+  try{
+    var allPids=Object.keys(S.portfolios||{});
+    var storedPorts=JSON.parse(localStorage.getItem('tj_ports')||'{}');
+    allPids=allPids.concat(Object.keys(storedPorts));
+    allPids.forEach(function(pid){
+      localStorage.removeItem('port_'+pid+'_t');
+      localStorage.removeItem('port_'+pid+'_s');
+    });
+  }catch(e){}
+  // ล้าง data mode + retry queue
+  localStorage.removeItem('dt_trades');
+  localStorage.removeItem('tj_send_queue');
+  localStorage.removeItem('tj_ports');
+  localStorage.removeItem('tj_curport');
+  localStorage.removeItem('tj_deleted_ports');
+  // ล้าง retry queue ใน memory
+  _sendQueue=[];
+  if(typeof _sendRetryTimer!=='undefined') clearTimeout(_sendRetryTimer);
+  // Reset S object
+  S.trades={};S.sessions={};S.portfolios={};S.currentPortfolio='default';
+  showToast('🔄 เปลี่ยน Sheet URL — ล้างข้อมูลเก่าแล้ว','success');
+}
 function saveSheet(){
   var url=document.getElementById('sheetUrl').value.trim();
   if(!url){showToast('กรุณาใส่ URL ก่อน','error');return;}
+  _clearLocalForNewUrl(url);
   S.scriptUrl=url;
   localStorage.setItem('tj_url',url);
   var res=document.getElementById('sheetRes');
@@ -6360,6 +6412,14 @@ var _sendRetryTimer=null;
 function _flushSendQueue(){
   if(!_sendQueue.length||!S.scriptUrl) return;
   var item=_sendQueue[0];
+  // FIX: ถ้า queue item ถูกส่งมาจาก Sheet URL อื่น → ทิ้งทั้ง queue
+  // ป้องกัน trades เก่าหลุดไปยัง Sheet ใหม่
+  if(item.payload&&item.payload._queuedUrl&&item.payload._queuedUrl!==S.scriptUrl){
+    console.warn('[sendQueue] URL mismatch — discarding stale queue');
+    _sendQueue=[];
+    localStorage.removeItem('tj_send_queue');
+    return;
+  }
   fetch(S.scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(item.payload)})
     .then(function(){
       _sendQueue.shift();
@@ -6384,6 +6444,7 @@ function sendSheet(action,data){
     })
     .catch(function(err){
       showToast('⚠ Sheet offline — บันทึก local แล้ว จะ retry อัตโนมัติ','error');
+      payload._queuedUrl=S.scriptUrl; // เก็บ URL ตอนที่ queue เพื่อตรวจ URL ไม่ตรง
       _sendQueue.push({payload:payload,action:action,ts:Date.now()});
       try{ localStorage.setItem('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
       _sendRetryTimer=setTimeout(_flushSendQueue,15000);
@@ -6393,7 +6454,22 @@ function sendSheet(action,data){
 (function(){
   try{
     var q=JSON.parse(localStorage.getItem('tj_send_queue')||'[]');
-    if(q.length){ _sendQueue=q; setTimeout(_flushSendQueue,3000); }
+    if(q.length){
+      var currentUrl=localStorage.getItem('tj_url')||'';
+      // FIX: กรอง queue ที่เป็นของ URL ปัจจุบันเท่านั้น
+      if(currentUrl){
+        q=q.filter(function(item){
+          var qUrl=item.payload&&item.payload._queuedUrl;
+          return !qUrl||qUrl===currentUrl;
+        });
+      }
+      if(q.length){
+        _sendQueue=q;
+        setTimeout(_flushSendQueue,3000);
+      } else {
+        localStorage.removeItem('tj_send_queue');
+      }
+    }
   }catch(e){}
 })();
 // Sync Asset list to/from Sheet (item 4)
