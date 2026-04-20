@@ -1474,9 +1474,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     </div>
     <div class="field-label">Apps Script URL</div>
     <input class="settings-input" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec" oninput="openSheet_onUrlChange()">
-    <div style="margin-top:10px;"><div class="field-label" style="margin-bottom:5px;">📋 Code: <span style="font-size:10px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 7px;margin-left:6px;font-family:var(--font-mono);font-weight:700;">v5.1</span></div>
+    <div style="margin-top:10px;"><div class="field-label" style="margin-bottom:5px;">📋 Code: <span style="font-size:10px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 7px;margin-left:6px;font-family:var(--font-mono);font-weight:700;">v5.2</span></div>
     <div class="code-block">/* =========================================
-/* =========================================
    TradeLog Pro+ — Google Apps Script v5.2
    Changelog:
      v5.2 - FiboLevel: เพิ่ม column ใน Trades + DataTrades
@@ -1497,70 +1496,70 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 
 
 
-var SHEET={TRADES:'Trades',DATA_TRADES:'DataTrades',SESSIONS:'Sessions',SUMMARY:'Summary',ASSETS:'Assets',LOG:'Log',JOURNAL:'Journal',DELETED_PORTS:'DeletedPorts'};
+var SHEET={TRADES:&#x27;Trades&#x27;,DATA_TRADES:&#x27;DataTrades&#x27;,SESSIONS:&#x27;Sessions&#x27;,SUMMARY:&#x27;Summary&#x27;,ASSETS:&#x27;Assets&#x27;,LOG:&#x27;Log&#x27;,JOURNAL:&#x27;Journal&#x27;,DELETED_PORTS:&#x27;DeletedPorts&#x27;};
 // ── UNIFIED TRADE SCHEMA — single source of truth for all field names ──
 // Changing here updates Trades, DataTrades, import parsers and forms
 var TRADE_FIELD_NAMES=[
-  'ID','Date','Portfolio','Asset','Side','Lots',
-  'Entry','Close','TP','SL','FiboLevel',
-  'PnL($)','Fees($)','Commission($)','Result','Risk','MaxRR',
-  'TimeInPos','SetupDuration','EntryDateTime','CloseDateTime',
-  'SetupClass','Candle','Code','Mode','Timeframe',
-  'Trend','Zone','Confirm','Sessions','Emotion','Discipline',
-  'Note','ImageLink','UpdatedAt'
+  &#x27;ID&#x27;,&#x27;Date&#x27;,&#x27;Portfolio&#x27;,&#x27;Asset&#x27;,&#x27;Side&#x27;,&#x27;Lots&#x27;,
+  &#x27;Entry&#x27;,&#x27;Close&#x27;,&#x27;TP&#x27;,&#x27;SL&#x27;,&#x27;FiboLevel&#x27;,
+  &#x27;PnL($)&#x27;,&#x27;Fees($)&#x27;,&#x27;Commission($)&#x27;,&#x27;Result&#x27;,&#x27;Risk&#x27;,&#x27;MaxRR&#x27;,
+  &#x27;TimeInPos&#x27;,&#x27;SetupDuration&#x27;,&#x27;EntryDateTime&#x27;,&#x27;CloseDateTime&#x27;,
+  &#x27;SetupClass&#x27;,&#x27;Candle&#x27;,&#x27;Code&#x27;,&#x27;Mode&#x27;,&#x27;Timeframe&#x27;,
+  &#x27;Trend&#x27;,&#x27;Zone&#x27;,&#x27;Confirm&#x27;,&#x27;Sessions&#x27;,&#x27;Emotion&#x27;,&#x27;Discipline&#x27;,
+  &#x27;Note&#x27;,&#x27;ImageLink&#x27;,&#x27;UpdatedAt&#x27;
 ];
 var HDR={
   TRADES:TRADE_FIELD_NAMES,
   DATA_TRADES:[
-    'ID','Date','Day','Portfolio',
-    'Session','Asset','Side',
-    'Entry','Close','TP','SL','FiboLevel',
-    'PnL($)','Fees($)','Commission($)','Result','Risk','MaxRR','Lots',
-    'EntryTime','Duration','SetupDuration','TimeInPos',
-    'SetupClass','Candle','Code','Mode','TF',
-    'ZoneMit','Zone','Confirm',
-    'Emotion','Discipline','Note','ImageLink','UpdatedAt'
+    &#x27;ID&#x27;,&#x27;Date&#x27;,&#x27;Day&#x27;,&#x27;Portfolio&#x27;,
+    &#x27;Session&#x27;,&#x27;Asset&#x27;,&#x27;Side&#x27;,
+    &#x27;Entry&#x27;,&#x27;Close&#x27;,&#x27;TP&#x27;,&#x27;SL&#x27;,&#x27;FiboLevel&#x27;,
+    &#x27;PnL($)&#x27;,&#x27;Fees($)&#x27;,&#x27;Commission($)&#x27;,&#x27;Result&#x27;,&#x27;Risk&#x27;,&#x27;MaxRR&#x27;,&#x27;Lots&#x27;,
+    &#x27;EntryTime&#x27;,&#x27;Duration&#x27;,&#x27;SetupDuration&#x27;,&#x27;TimeInPos&#x27;,
+    &#x27;SetupClass&#x27;,&#x27;Candle&#x27;,&#x27;Code&#x27;,&#x27;Mode&#x27;,&#x27;TF&#x27;,
+    &#x27;ZoneMit&#x27;,&#x27;Zone&#x27;,&#x27;Confirm&#x27;,
+    &#x27;Emotion&#x27;,&#x27;Discipline&#x27;,&#x27;Note&#x27;,&#x27;ImageLink&#x27;,&#x27;UpdatedAt&#x27;
   ],
   SESSIONS:[
-    'Date','Portfolio','Emotion','Trend','Confirm',
-    'Sessions','Strategies','Notes',
-    'NetPnL($)','TotalTrades','WinRate(%)','GrossProfit($)','GrossLoss($)',
-    'AvgWin($)','AvgLoss($)','ProfitFactor','MaxDD($)','NotesHistory','SavedAt'
+    &#x27;Date&#x27;,&#x27;Portfolio&#x27;,&#x27;Emotion&#x27;,&#x27;Trend&#x27;,&#x27;Confirm&#x27;,
+    &#x27;Sessions&#x27;,&#x27;Strategies&#x27;,&#x27;Notes&#x27;,
+    &#x27;NetPnL($)&#x27;,&#x27;TotalTrades&#x27;,&#x27;WinRate(%)&#x27;,&#x27;GrossProfit($)&#x27;,&#x27;GrossLoss($)&#x27;,
+    &#x27;AvgWin($)&#x27;,&#x27;AvgLoss($)&#x27;,&#x27;ProfitFactor&#x27;,&#x27;MaxDD($)&#x27;,&#x27;NotesHistory&#x27;,&#x27;SavedAt&#x27;
   ],
   SUMMARY:[
-    'Date','Portfolio','NetPnL($)','GrossProfit($)','GrossLoss($)',
-    'TotalTrades','Wins','Losses','WinRate(%)','AvgWin($)','AvgLoss($)',
-    'ProfitFactor','MaxDD($)','BestTrade($)','WorstTrade($)',
-    'Emotion','Sessions','UpdatedAt'
+    &#x27;Date&#x27;,&#x27;Portfolio&#x27;,&#x27;NetPnL($)&#x27;,&#x27;GrossProfit($)&#x27;,&#x27;GrossLoss($)&#x27;,
+    &#x27;TotalTrades&#x27;,&#x27;Wins&#x27;,&#x27;Losses&#x27;,&#x27;WinRate(%)&#x27;,&#x27;AvgWin($)&#x27;,&#x27;AvgLoss($)&#x27;,
+    &#x27;ProfitFactor&#x27;,&#x27;MaxDD($)&#x27;,&#x27;BestTrade($)&#x27;,&#x27;WorstTrade($)&#x27;,
+    &#x27;Emotion&#x27;,&#x27;Sessions&#x27;,&#x27;UpdatedAt&#x27;
   ],
-  ASSETS:['Asset','UpdatedAt'],
-  LOG:['Time','Action','Detail','Portfolio','Source','Result'],
-  JOURNAL:['Date','Portfolio','NoteHTML','NotePlain','UpdatedAt'],
-  DELETED_PORTS:['PortfolioID','DeletedAt']
+  ASSETS:[&#x27;Asset&#x27;,&#x27;UpdatedAt&#x27;],
+  LOG:[&#x27;Time&#x27;,&#x27;Action&#x27;,&#x27;Detail&#x27;,&#x27;Portfolio&#x27;,&#x27;Source&#x27;,&#x27;Result&#x27;],
+  JOURNAL:[&#x27;Date&#x27;,&#x27;Portfolio&#x27;,&#x27;NoteHTML&#x27;,&#x27;NotePlain&#x27;,&#x27;UpdatedAt&#x27;],
+  DELETED_PORTS:[&#x27;PortfolioID&#x27;,&#x27;DeletedAt&#x27;]
 };
 
 function doGet(e){
-  var p=e&&e.parameter;
-  if(p&&p.action==='loadAssets')     return _json(loadAssets());
-  if(p&&p.action==='loadPortfolios') return _json(loadPortfolios());
-  if(p&&p.action==='loadAll')           return _json(loadAll());
-  if(p&&p.action==='cleanDuplicates')   return _json(cleanDuplicates());
-  if(p&&p.action==='clearAllDataTrades')  return _json(clearAllDataTrades(p));
-  if(p&&p.action==='deduplicateDataTrades') return _json(deduplicateDataTrades(p));
-  return _json({status:'ready',version:'5.1',time:new Date().toISOString()});
+  var p=e&amp;&amp;e.parameter;
+  if(p&amp;&amp;p.action===&#x27;loadAssets&#x27;)     return _json(loadAssets());
+  if(p&amp;&amp;p.action===&#x27;loadPortfolios&#x27;) return _json(loadPortfolios());
+  if(p&amp;&amp;p.action===&#x27;loadAll&#x27;)           return _json(loadAll());
+  if(p&amp;&amp;p.action===&#x27;cleanDuplicates&#x27;)   return _json(cleanDuplicates());
+  if(p&amp;&amp;p.action===&#x27;clearAllDataTrades&#x27;)  return _json(clearAllDataTrades(p));
+  if(p&amp;&amp;p.action===&#x27;deduplicateDataTrades&#x27;) return _json(deduplicateDataTrades(p));
+  return _json({status:&#x27;ready&#x27;,version:&#x27;5.1&#x27;,time:new Date().toISOString()});
 }
 function loadAll(){
   try{
     var ss=SpreadsheetApp.getActiveSpreadsheet();
-    var result={status:'ok',portfolios:{},trades:[],sessions:[],dataTrades:[]};
+    var result={status:&#x27;ok&#x27;,portfolios:{},trades:[],sessions:[],dataTrades:[]};
 
     // ── อ่าน DeletedPorts sheet ก่อน (permanent tombstone — ไม่โดนลบโดย rolling log) ──
     var _permanentDeleted={};
     try{
       var dpSh=ss.getSheetByName(SHEET.DELETED_PORTS);
-      if(dpSh&&dpSh.getLastRow()>1){
+      if(dpSh&amp;&amp;dpSh.getLastRow()&gt;1){
         dpSh.getRange(2,1,dpSh.getLastRow()-1,1).getValues().forEach(function(r){
-          var pid=String(r[0]||'').trim();
+          var pid=String(r[0]||&#x27;&#x27;).trim();
           if(pid) _permanentDeleted[pid]=true;
         });
       }
@@ -1568,24 +1567,24 @@ function loadAll(){
 
     // ── Portfolios from Log ──
     var logSh=ss.getSheetByName(SHEET.LOG);
-    if(logSh&&logSh.getLastRow()>1){
+    if(logSh&amp;&amp;logSh.getLastRow()&gt;1){
       var logRows=logSh.getRange(2,1,logSh.getLastRow()-1,6).getValues();
       var ports={};
       var deletedPorts={}; // tombstone: พอร์ตที่ถูกลบแล้ว (จาก Log)
       // รวม permanent tombstone เข้าไปก่อนเลย
       Object.keys(_permanentDeleted).forEach(function(pid){ deletedPorts[pid]=true; });
       logRows.forEach(function(r){
-        var action=String(r[1]||'');
-        var detail=String(r[2]||'');
-        if(action==='saveSettings'){
+        var action=String(r[1]||&#x27;&#x27;);
+        var detail=String(r[2]||&#x27;&#x27;);
+        if(action===&#x27;saveSettings&#x27;){
           var addM=detail.match(/^portfolio_add\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+fund=(\S*)/);
           var editM=detail.match(/^portfolio_edit\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+balance=([\d.]+)\s+fund=(\S*)/);
           // ถ้า id อยู่ใน permanent tombstone → ไม่ restore ไม่ว่า Log จะบอกอะไร
-          if(addM){ var id=addM[1]; if(!ports[id]&&!_permanentDeleted[id]) ports[id]={name:addM[2],balance:0,fund:addM[3]==='-'?'':addM[3]}; }
-          if(editM){ var id=editM[1]; if(!_permanentDeleted[id]) ports[id]={name:editM[2],balance:parseFloat(editM[3])||0,fund:editM[4]==='-'?'':editM[4]}; }
+          if(addM){ var id=addM[1]; if(!ports[id]&amp;&amp;!_permanentDeleted[id]) ports[id]={name:addM[2],balance:0,fund:addM[3]===&#x27;-&#x27;?&#x27;&#x27;:addM[3]}; }
+          if(editM){ var id=editM[1]; if(!_permanentDeleted[id]) ports[id]={name:editM[2],balance:parseFloat(editM[3])||0,fund:editM[4]===&#x27;-&#x27;?&#x27;&#x27;:editM[4]}; }
         }
         // อ่าน tombstone จาก deletePortfolio ใน Log (เป็น backup ของ permanent sheet)
-        if(action==='deletePortfolio'){
+        if(action===&#x27;deletePortfolio&#x27;){
           var delM=detail.match(/^portfolio_delete\s+id=(\S+)/);
           if(delM){ deletedPorts[delM[1]]=true; delete ports[delM[1]]; }
         }
@@ -1593,7 +1592,7 @@ function loadAll(){
       // ลบพอร์ตที่อยู่ใน permanent tombstone ออกจาก ports ด้วย (กันทุกกรณี)
       Object.keys(_permanentDeleted).forEach(function(pid){ delete ports[pid]; });
       // สร้าง default เฉพาะตอนที่ไม่ได้อยู่ใน tombstone (ป้องกัน default เด้งกลับ)
-      if(!ports['default'] && !deletedPorts['default']) ports['default']={name:'Default',balance:0,fund:''};
+      if(!ports[&#x27;default&#x27;] &amp;&amp; !deletedPorts[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
       result.portfolios=ports;
       result._deletedPorts=deletedPorts; // ส่งกลับไปให้ client ด้วย
     }
@@ -1601,57 +1600,57 @@ function loadAll(){
     // ── fallback: ดึง unique Portfolio IDs จาก Trades sheet ถ้า Log ไม่มี ──
     var _deletedPorts=result._deletedPorts||{};
     var tShFB=ss.getSheetByName(SHEET.TRADES);
-    if(tShFB&&tShFB.getLastRow()>1){
+    if(tShFB&amp;&amp;tShFB.getLastRow()&gt;1){
       var tPortVals=tShFB.getRange(2,3,tShFB.getLastRow()-1,1).getValues();
       tPortVals.forEach(function(r){
-        var pid=String(r[0]||'').trim();
+        var pid=String(r[0]||&#x27;&#x27;).trim();
         // ข้ามพอร์ตที่ถูกลบ (tombstone) — ป้องกันเด้งกลับมา
-        if(pid&&!result.portfolios[pid]&&!_deletedPorts[pid]){
-          var shortName=pid.replace(/^port_/,'').substring(0,7);
-          result.portfolios[pid]={name:'Port-'+shortName,balance:0,fund:'',_autoName:true};
+        if(pid&amp;&amp;!result.portfolios[pid]&amp;&amp;!_deletedPorts[pid]){
+          var shortName=pid.replace(/^port_/,&#x27;&#x27;).substring(0,7);
+          result.portfolios[pid]={name:&#x27;Port-&#x27;+shortName,balance:0,fund:&#x27;&#x27;,_autoName:true};
         }
       });
     }
 
     // ── fallback: สร้างพอร์ตจาก Trades sheet ถ้า Log ไม่มีข้อมูล ──
     var tShP=ss.getSheetByName(SHEET.TRADES);
-    if(tShP&&tShP.getLastRow()>1){
+    if(tShP&amp;&amp;tShP.getLastRow()&gt;1){
       var tVals=tShP.getRange(2,3,tShP.getLastRow()-1,1).getValues();
       tVals.forEach(function(r){
-        var pid=String(r[0]||'').trim();
+        var pid=String(r[0]||&#x27;&#x27;).trim();
         // ข้ามพอร์ตที่ถูกลบ (tombstone) — ป้องกันเด้งกลับมา
-        if(pid&&!result.portfolios[pid]&&!_deletedPorts[pid]){
-          var shortName=pid.replace(/^port_/,'').substring(0,7);
-          result.portfolios[pid]={name:'Port '+shortName,balance:0,fund:'',_autoName:true};
+        if(pid&amp;&amp;!result.portfolios[pid]&amp;&amp;!_deletedPorts[pid]){
+          var shortName=pid.replace(/^port_/,&#x27;&#x27;).substring(0,7);
+          result.portfolios[pid]={name:&#x27;Port &#x27;+shortName,balance:0,fund:&#x27;&#x27;,_autoName:true};
         }
       });
     }
 
     // helper: แปลง cell value เป็น string/number ปลอดภัย
     function _cv(v){
-      if(v===null||v===undefined) return '';
+      if(v===null||v===undefined) return &#x27;&#x27;;
       if(v instanceof Date){
         try{
           // Always format with full datetime, then decide: if time=00:00 assume date-only cell
-          var _fmt=Utilities.formatDate(v,'Asia/Bangkok','yyyy-MM-dd HH:mm');
+          var _fmt=Utilities.formatDate(v,&#x27;Asia/Bangkok&#x27;,&#x27;yyyy-MM-dd HH:mm&#x27;);
           // Date-only cells (no time) end with 00:00 → return date only
-          if(_fmt.slice(-5)==='00:00') return _fmt.slice(0,10);
+          if(_fmt.slice(-5)===&#x27;00:00&#x27;) return _fmt.slice(0,10);
           // Time-only cells (Google epoch 1899-12-30) begin with 1899 → return time only
-          if(_fmt.slice(0,4)==='1899') return _fmt.slice(11);
+          if(_fmt.slice(0,4)===&#x27;1899&#x27;) return _fmt.slice(11);
           // Full datetime → return as-is
           return _fmt;
         }catch(ex){ return String(v); }
       }
-      if(typeof v==='number') return v;
-      if(typeof v==='boolean') return v?'true':'false';
+      if(typeof v===&#x27;number&#x27;) return v;
+      if(typeof v===&#x27;boolean&#x27;) return v?&#x27;true&#x27;:&#x27;false&#x27;;
       var s=String(v);
-      // ถ้าเป็น Date string ที่ GAS format มา เช่น "Thu Apr 10 2026 00:00:00..."
+      // ถ้าเป็น Date string ที่ GAS format มา เช่น &quot;Thu Apr 10 2026 00:00:00...&quot;
       // แปลงให้เป็น yyyy-MM-dd
       var dm=s.match(/^(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
       if(dm){
-        var months={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+        var months={Jan:&#x27;01&#x27;,Feb:&#x27;02&#x27;,Mar:&#x27;03&#x27;,Apr:&#x27;04&#x27;,May:&#x27;05&#x27;,Jun:&#x27;06&#x27;,Jul:&#x27;07&#x27;,Aug:&#x27;08&#x27;,Sep:&#x27;09&#x27;,Oct:&#x27;10&#x27;,Nov:&#x27;11&#x27;,Dec:&#x27;12&#x27;};
         var d=parseInt(dm[3]);
-        return dm[4]+'-'+(months[dm[2]]||'01')+'-'+(d<10?'0':'')+d;
+        return dm[4]+&#x27;-&#x27;+(months[dm[2]]||&#x27;01&#x27;)+&#x27;-&#x27;+(d&lt;10?&#x27;0&#x27;:&#x27;&#x27;)+d;
       }
       return s;
     }
@@ -1659,13 +1658,13 @@ function loadAll(){
 
     // ── Trades (dedup by ID before returning) ──
     var tSh=ss.getSheetByName(SHEET.TRADES);
-    if(tSh&&tSh.getLastRow()>1){
+    if(tSh&amp;&amp;tSh.getLastRow()&gt;1){
       var tHdr=tSh.getRange(1,1,1,tSh.getLastColumn()).getValues()[0];
       var tRows=tSh.getRange(2,1,tSh.getLastRow()-1,tSh.getLastColumn()).getValues();
       var tSeen={};
       tRows.forEach(function(r){
         var obj=_row2obj(tHdr,r);
-        var tid=String(obj['ID']||obj['id']||'').trim();
+        var tid=String(obj[&#x27;ID&#x27;]||obj[&#x27;id&#x27;]||&#x27;&#x27;).trim();
         if(!tid) return; // skip blank rows
         if(!tSeen[tid]){ tSeen[tid]=true; result.trades.push(obj); }
         // ถ้า ID ซ้ำ ข้ามไป (dedup ใน memory ก่อนส่ง browser)
@@ -1674,84 +1673,84 @@ function loadAll(){
 
     // ── Sessions (dedup by Date+Portfolio) ──
     var sesSh=ss.getSheetByName(SHEET.SESSIONS);
-    if(sesSh&&sesSh.getLastRow()>1){
+    if(sesSh&amp;&amp;sesSh.getLastRow()&gt;1){
       var sHdr=sesSh.getRange(1,1,1,sesSh.getLastColumn()).getValues()[0];
       var sRows=sesSh.getRange(2,1,sesSh.getLastRow()-1,sesSh.getLastColumn()).getValues();
       var sSeen={};
       sRows.forEach(function(r){
         var obj=_row2obj(sHdr,r);
-        var sDate=String(obj['Date']||obj['date']||'').trim();
-        var sPort=String(obj['Portfolio']||obj['portfolio']||'default').trim();
+        var sDate=String(obj[&#x27;Date&#x27;]||obj[&#x27;date&#x27;]||&#x27;&#x27;).trim();
+        var sPort=String(obj[&#x27;Portfolio&#x27;]||obj[&#x27;portfolio&#x27;]||&#x27;default&#x27;).trim();
         if(!sDate) return;
-        var sKey=sPort+'|'+sDate;
+        var sKey=sPort+&#x27;|&#x27;+sDate;
         if(!sSeen[sKey]){ sSeen[sKey]=true; result.sessions.push(obj); }
       });
     }
 
     // ── DataTrades (dedup by ID) ──
     var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
-    if(dtSh&&dtSh.getLastRow()>1){
+    if(dtSh&amp;&amp;dtSh.getLastRow()&gt;1){
       var dHdr=dtSh.getRange(1,1,1,dtSh.getLastColumn()).getValues()[0];
       var dRows=dtSh.getRange(2,1,dtSh.getLastRow()-1,dtSh.getLastColumn()).getValues();
       var dtSeen={};
       dRows.forEach(function(r){
         var obj=_row2obj(dHdr,r);
-        var dtid=String(obj['ID']||obj['id']||'').trim();
+        var dtid=String(obj[&#x27;ID&#x27;]||obj[&#x27;id&#x27;]||&#x27;&#x27;).trim();
         if(!dtid) return;
         if(!dtSeen[dtid]){ dtSeen[dtid]=true; result.dataTrades.push(obj); }
       });
     }
 
-    _log('loadAll','trades='+result.trades.length+' sessions='+result.sessions.length+' dataTrades='+result.dataTrades.length+' portfolios='+Object.keys(result.portfolios).length,'','system','ok');
+    _log(&#x27;loadAll&#x27;,&#x27;trades=&#x27;+result.trades.length+&#x27; sessions=&#x27;+result.sessions.length+&#x27; dataTrades=&#x27;+result.dataTrades.length+&#x27; portfolios=&#x27;+Object.keys(result.portfolios).length,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
     // ── Journal (Note of Day) ──
     result.journal=[];
     var jSh=ss.getSheetByName(SHEET.JOURNAL);
-    if(jSh&&jSh.getLastRow()>1){
+    if(jSh&amp;&amp;jSh.getLastRow()&gt;1){
       var jHdr=jSh.getRange(1,1,1,jSh.getLastColumn()).getValues()[0];
       var jRows=jSh.getRange(2,1,jSh.getLastRow()-1,jSh.getLastColumn()).getValues();
       jRows.forEach(function(r){
         var obj=_row2obj(jHdr,r);
-        var date=String(obj['Date']||obj['date']||'').trim().substring(0,10);
-        var port=String(obj['Portfolio']||obj['portfolio']||'default').trim();
-        var html=String(obj['NoteHTML']||obj['noteHTML']||'').trim();
-        if(date&&html) result.journal.push({date:date,portfolio:port,noteHTML:html});
+        var date=String(obj[&#x27;Date&#x27;]||obj[&#x27;date&#x27;]||&#x27;&#x27;).trim().substring(0,10);
+        var port=String(obj[&#x27;Portfolio&#x27;]||obj[&#x27;portfolio&#x27;]||&#x27;default&#x27;).trim();
+        var html=String(obj[&#x27;NoteHTML&#x27;]||obj[&#x27;noteHTML&#x27;]||&#x27;&#x27;).trim();
+        if(date&amp;&amp;html) result.journal.push({date:date,portfolio:port,noteHTML:html});
       });
     }
     return result;
   }catch(e){
-    _log('loadAll','error='+e.toString(),'','system','error');
-    return {status:'error',msg:e.toString()};
+    _log(&#x27;loadAll&#x27;,&#x27;error=&#x27;+e.toString(),&#x27;&#x27;,&#x27;system&#x27;,&#x27;error&#x27;);
+    return {status:&#x27;error&#x27;,msg:e.toString()};
   }
 }
 
 function loadPortfolios(){
   try{
     var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.LOG);
-    if(!sh||sh.getLastRow()<2) return {status:'ok',portfolios:{}};
+    if(!sh||sh.getLastRow()&lt;2) return {status:&#x27;ok&#x27;,portfolios:{}};
     var rows=sh.getRange(2,1,sh.getLastRow()-1,6).getValues();
     var ports={};
     rows.forEach(function(r){
-      var action=String(r[1]||'');
-      var detail=String(r[2]||'');
-      if(action==='saveSettings'){
+      var action=String(r[1]||&#x27;&#x27;);
+      var detail=String(r[2]||&#x27;&#x27;);
+      if(action===&#x27;saveSettings&#x27;){
         var addM=detail.match(/^portfolio_add\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+fund=(\S*)/);
         var editM=detail.match(/^portfolio_edit\s+id=(\S+)\s+name=([^\s]+(?:\s+[^\s]+)*?)\s+balance=([\d.]+)\s+fund=(\S*)/);
         if(addM){
-          var id=addM[1],name=addM[2],fund=addM[3]==='-'?'':addM[3];
+          var id=addM[1],name=addM[2],fund=addM[3]===&#x27;-&#x27;?&#x27;&#x27;:addM[3];
           if(!ports[id]) ports[id]={name:name,balance:0,fund:fund};
         }
         if(editM){
-          var id=editM[1],name=editM[2],bal=parseFloat(editM[3])||0,fund=editM[4]==='-'?'':editM[4];
+          var id=editM[1],name=editM[2],bal=parseFloat(editM[3])||0,fund=editM[4]===&#x27;-&#x27;?&#x27;&#x27;:editM[4];
           ports[id]={name:name,balance:bal,fund:fund};
         }
       }
     });
-    if(!ports['default']) ports['default']={name:'Default',balance:0,fund:''};
-    _log('loadPortfolios','count='+Object.keys(ports).length,'','system','ok');
-    return {status:'ok',portfolios:ports};
+    if(!ports[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
+    _log(&#x27;loadPortfolios&#x27;,&#x27;count=&#x27;+Object.keys(ports).length,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
+    return {status:&#x27;ok&#x27;,portfolios:ports};
   }catch(e){
-    _log('loadPortfolios','error='+e.toString(),'','system','error');
-    return {status:'error',msg:e.toString()};
+    _log(&#x27;loadPortfolios&#x27;,&#x27;error=&#x27;+e.toString(),&#x27;&#x27;,&#x27;system&#x27;,&#x27;error&#x27;);
+    return {status:&#x27;error&#x27;,msg:e.toString()};
   }
 }
 
@@ -1759,146 +1758,146 @@ function doPost(e){
   try{
     var d=JSON.parse(e.postData.contents);
     var res;
-    if(d.action==='saveTrade')               res=saveTrade(d);
-    else if(d.action==='deleteTrade')        res=deleteTrade(d);
-    else if(d.action==='saveSession')        res=saveSession(d);
-    else if(d.action==='deleteDay')          res=deleteDay(d);
-    else if(d.action==='saveAssets')         res=saveAssets(d);
-    else if(d.action==='deletePortfolio')    res=deletePortfolio(d);
-    else if(d.action==='batchSaveTrades')    res=batchSaveTrades(d);
-    else if(d.action==='saveSettings')       res=saveSettings(d);
-    else if(d.action==='saveDataTrade')      res=saveDataTrade(d);
-    else if(d.action==='deleteDataTrade')    res=deleteDataTrade(d);
-    else if(d.action==='batchSaveDataTrades')res=batchSaveDataTrades(d);
-    else if(d.action==='clearAllDataTrades')   res=clearAllDataTrades(d);
-    else if(d.action==='deduplicateDataTrades') res=deduplicateDataTrades(d);
-    else if(d.action==='saveNoteDay')         res=saveNoteDay(d);
-    else res={status:'error',msg:'unknown action: '+d.action};
+    if(d.action===&#x27;saveTrade&#x27;)               res=saveTrade(d);
+    else if(d.action===&#x27;deleteTrade&#x27;)        res=deleteTrade(d);
+    else if(d.action===&#x27;saveSession&#x27;)        res=saveSession(d);
+    else if(d.action===&#x27;deleteDay&#x27;)          res=deleteDay(d);
+    else if(d.action===&#x27;saveAssets&#x27;)         res=saveAssets(d);
+    else if(d.action===&#x27;deletePortfolio&#x27;)    res=deletePortfolio(d);
+    else if(d.action===&#x27;batchSaveTrades&#x27;)    res=batchSaveTrades(d);
+    else if(d.action===&#x27;saveSettings&#x27;)       res=saveSettings(d);
+    else if(d.action===&#x27;saveDataTrade&#x27;)      res=saveDataTrade(d);
+    else if(d.action===&#x27;deleteDataTrade&#x27;)    res=deleteDataTrade(d);
+    else if(d.action===&#x27;batchSaveDataTrades&#x27;)res=batchSaveDataTrades(d);
+    else if(d.action===&#x27;clearAllDataTrades&#x27;)   res=clearAllDataTrades(d);
+    else if(d.action===&#x27;deduplicateDataTrades&#x27;) res=deduplicateDataTrades(d);
+    else if(d.action===&#x27;saveNoteDay&#x27;)         res=saveNoteDay(d);
+    else res={status:&#x27;error&#x27;,msg:&#x27;unknown action: &#x27;+d.action};
     return _json(res);
   }catch(err){
-    _log('ERROR',err.toString(),'','system','error');
-    return _json({status:'error',msg:err.toString()});
+    _log(&#x27;ERROR&#x27;,err.toString(),&#x27;&#x27;,&#x27;system&#x27;,&#x27;error&#x27;);
+    return _json({status:&#x27;error&#x27;,msg:err.toString()});
   }
 }
 
 function saveAssets(d){
   var sh=_sheet(SHEET.ASSETS,HDR.ASSETS);
   var assets=d.assets||[];
-  if(sh.getLastRow()>1) sh.deleteRows(2,sh.getLastRow()-1);
+  if(sh.getLastRow()&gt;1) sh.deleteRows(2,sh.getLastRow()-1);
   var now=_now();
   assets.forEach(function(a){sh.appendRow([a,now]);});
-  _log('saveAssets','count='+assets.length,d.portfolio||'default','port','ok');
-  return {status:'ok',count:assets.length};
+  _log(&#x27;saveAssets&#x27;,&#x27;count=&#x27;+assets.length,d.portfolio||&#x27;default&#x27;,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,count:assets.length};
 }
 
 function saveNoteDay(d){
   var sh=_sheet(SHEET.JOURNAL,HDR.JOURNAL);
-  var portfolio=d.portfolio||'default';
-  var date=d.date||'';
-  if(!date) return {status:'error',msg:'missing date'};
+  var portfolio=d.portfolio||&#x27;default&#x27;;
+  var date=d.date||&#x27;&#x27;;
+  if(!date) return {status:&#x27;error&#x27;,msg:&#x27;missing date&#x27;};
   // strip base64 images from HTML before saving to keep sheet lightweight
-  var html=(d.noteHTML||'').replace(/src="data:[^"]{0,20000}"/g,'src="[image]"');
+  var html=(d.noteHTML||&#x27;&#x27;).replace(/src=&quot;data:[^&quot;]{0,20000}&quot;/g,&#x27;src=&quot;[image]&quot;&#x27;);
   // plain text fallback (strip tags)
-  var plain=(d.notePlain||html.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()).substring(0,5000);
+  var plain=(d.notePlain||html.replace(/&lt;[^&gt;]*&gt;/g,&#x27; &#x27;).replace(/\s+/g,&#x27; &#x27;).trim()).substring(0,5000);
   var row=[date, portfolio, html, plain, _now()];
   var existing=_findRow2(sh,1,date,2,portfolio);
-  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
-  var bg='#1a1c2e';
-  sh.getRange(existing,1,1,row.length).setBackground(bg).setFontColor('#e8eaf0').setFontSize(10);
-  _log('saveNoteDay','date='+date+' len='+html.length,portfolio,'port','ok');
-  return {status:'ok',date:date,portfolio:portfolio};
+  var bg=&#x27;#1a1c2e&#x27;;
+  sh.getRange(existing,1,1,row.length).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(10);
+  _log(&#x27;saveNoteDay&#x27;,&#x27;date=&#x27;+date+&#x27; len=&#x27;+html.length,portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,date:date,portfolio:portfolio};
 }
 function loadAssets(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.ASSETS);
-  if(!sh||sh.getLastRow()<2) return {status:'ok',assets:[]};
+  if(!sh||sh.getLastRow()&lt;2) return {status:&#x27;ok&#x27;,assets:[]};
   var assets=sh.getRange(2,1,sh.getLastRow()-1,1).getValues().map(function(r){return r[0];}).filter(Boolean);
-  return {status:'ok',assets:assets};
+  return {status:&#x27;ok&#x27;,assets:assets};
 }
 
 function saveSettings(d){
-  var key=d.key||'';
-  var value=String(d.value||'').substring(0,250);
-  _log('saveSettings',key+'='+value,d.portfolio||'','system','ok');
-  return {status:'ok',key:key};
+  var key=d.key||&#x27;&#x27;;
+  var value=String(d.value||&#x27;&#x27;).substring(0,250);
+  _log(&#x27;saveSettings&#x27;,key+&#x27;=&#x27;+value,d.portfolio||&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,key:key};
 }
 
 function saveDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var id=String(d._id||d.id||Date.now());
   var row=[
-    id, d.date||'', d.day||'', d.portfolio||'data',
-    d.session||'', d.asset||'', d.side||'Long', d.entryTime||'', d.duration||'', d.setupDuration||'',
-    d.mode||'', d.code||'', d.tf||'', d.setupClass||'', d.candle||'',
-    d.zoneMit||'', d.zone||'', d.confirm||'',
-    d.entry||'', d.close||'', d.tp||'', d.sl||'', d.fiboLevel||'',
+    id, d.date||&#x27;&#x27;, d.day||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
+    d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;, d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;,
+    d.mode||&#x27;&#x27;, d.code||&#x27;&#x27;, d.tf||&#x27;&#x27;, d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;,
+    d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
+    d.entry||&#x27;&#x27;, d.close||&#x27;&#x27;, d.tp||&#x27;&#x27;, d.sl||&#x27;&#x27;, d.fiboLevel||&#x27;&#x27;,
     parseFloat(d.pnl)||0, parseFloat(d.fees)||0, parseFloat(d.commission)||0,
-    d.result||'', d.risk||'', d.maxRR||'', d.lots||'',
-    d.entryTime||'', d.duration||'', d.setupDuration||'', d.timeInPos||d.timeInPos||'',
-    d.setupClass||'', d.candle||'', d.code||'', d.mode||'', d.tf||'',
-    d.zoneMit||'', d.zone||'', d.confirm||'',
+    d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, d.lots||&#x27;&#x27;,
+    d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||d.timeInPos||&#x27;&#x27;,
+    d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;, d.code||&#x27;&#x27;, d.mode||&#x27;&#x27;, d.tf||&#x27;&#x27;,
+    d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
     d.emo||d.emotion||5, d.disc||d.discipline||5,
-    d.note||'', d.imgLink||'', _now()
+    d.note||&#x27;&#x27;, d.imgLink||&#x27;&#x27;, _now()
   ];
   var existing=_findRow(sh,1,id);
-  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   var pnl=parseFloat(d.pnl)||0;
   _styleDataRow(sh,existing,d.result,pnl);
-  _log('saveDataTrade','id='+id+' date='+d.date+' asset='+d.asset+' pnl='+pnl+' result='+d.result,d.portfolio||'data','data','ok');
-  return {status:'ok',id:id};
+  _log(&#x27;saveDataTrade&#x27;,&#x27;id=&#x27;+id+&#x27; date=&#x27;+d.date+&#x27; asset=&#x27;+d.asset+&#x27; pnl=&#x27;+pnl+&#x27; result=&#x27;+d.result,d.portfolio||&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,id:id};
 }
 
 function batchSaveDataTrades(d){
   var trades=d.trades||[];
-  if(!trades.length) return {status:'ok',count:0};
+  if(!trades.length) return {status:&#x27;ok&#x27;,count:0};
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var now=_now();
   trades.forEach(function(t){
     var id=String(t._id||t.id)||(Date.now().toString(36)+Math.random().toString(36).slice(2,10));
     var pnl=parseFloat(t.pnl)||0;
     var row=[
-      id, t.date||'', t.day||'', t.portfolio||'data',
-      t.session||'', t.asset||'', t.side||'Long', t.entryTime||'', t.duration||'', t.setupDuration||'',
-      t.mode||'', t.code||'', t.tf||'', t.setupClass||'', t.candle||'',
-      t.zoneMit||'', t.zone||'', t.confirm||'',
-      t.entry||'', t.close||'', t.tp||'', t.sl||'', t.fiboLevel||'',
+      id, t.date||&#x27;&#x27;, t.day||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
+      t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;, t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
+      t.mode||&#x27;&#x27;, t.code||&#x27;&#x27;, t.tf||&#x27;&#x27;, t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;,
+      t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
+      t.entry||&#x27;&#x27;, t.close||&#x27;&#x27;, t.tp||&#x27;&#x27;, t.sl||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
-      t.result||'', t.risk||'', t.maxRR||'', t.lots||'',
-      t.entryTime||'', t.duration||'', t.setupDuration||'', t.timeInPos||'',
-      t.setupClass||'', t.candle||'', t.code||'', t.mode||'', t.tf||'',
-      t.zoneMit||'', t.zone||'', t.confirm||'',
+      t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.lots||&#x27;&#x27;,
+      t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;,
+      t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
+      t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
       t.emo||t.emotion||5, t.disc||t.discipline||5,
-      t.note||'', t.imgLink||'', now
+      t.note||&#x27;&#x27;, t.imgLink||&#x27;&#x27;, now
     ];
     var existing=_findRow(sh,1,id);
-    if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+    if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
     else{ sh.appendRow(row); existing=sh.getLastRow(); }
     _styleDataRow(sh,existing,t.result,pnl);
   });
-  _log('batchSaveDataTrades','count='+trades.length,d.portfolio||'data','data','ok');
-  return {status:'ok',count:trades.length};
+  _log(&#x27;batchSaveDataTrades&#x27;,&#x27;count=&#x27;+trades.length,d.portfolio||&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,count:trades.length};
 }
 
 function deleteDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var row=_findRow(sh,1,String(d._id||d.id));
-  if(row>0) sh.deleteRow(row);
-  _log('deleteDataTrade','id='+(d._id||d.id)+' deleted='+(row>0),d.portfolio||'data','data',row>0?'ok':'not_found');
-  return {status:'ok',deleted:row>0};
+  if(row&gt;0) sh.deleteRow(row);
+  _log(&#x27;deleteDataTrade&#x27;,&#x27;id=&#x27;+(d._id||d.id)+&#x27; deleted=&#x27;+(row&gt;0),d.portfolio||&#x27;data&#x27;,&#x27;data&#x27;,row&gt;0?&#x27;ok&#x27;:&#x27;not_found&#x27;);
+  return {status:&#x27;ok&#x27;,deleted:row&gt;0};
 }
 
 function clearAllDataTrades(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var last=sh.getLastRow();
   var deleted=0;
-  if(last>1){
+  if(last&gt;1){
     // DataTrades ทั้งชีตเป็น Data Mode เท่านั้น → ลบทุก row เลย (เร็วกว่า loop)
     deleted=last-1;
     sh.deleteRows(2,deleted);
   }
-  _log('clearAllDataTrades','deleted='+deleted,d&&d.portfolio?d.portfolio:'data','data','ok');
-  return {status:'ok',deleted:deleted};
+  _log(&#x27;clearAllDataTrades&#x27;,&#x27;deleted=&#x27;+deleted,d&amp;&amp;d.portfolio?d.portfolio:&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,deleted:deleted};
 }
 
 function saveTrade(d){
@@ -1908,34 +1907,34 @@ function saveTrade(d){
   var comm=parseFloat(d.commission)||0;
   var fees=parseFloat(d.fees)||0;
   var row=[
-    id, d.date||'', d.portfolio||'default',
-    d.asset||'', d.side||'', parseFloat(d.lots)||0,
+    id, d.date||&#x27;&#x27;, d.portfolio||&#x27;default&#x27;,
+    d.asset||&#x27;&#x27;, d.side||&#x27;&#x27;, parseFloat(d.lots)||0,
     parseFloat(d.entry)||0, parseFloat(d.close)||0,
-    parseFloat(d.tp)||0, parseFloat(d.sl)||0, d.fiboLevel||'',
-    pnl, fees, comm, d.result||'', d.risk||'', d.maxRR||'', d.timeInPos||'', d.setupDuration||'',
-    d.entryDate||'', d.closeDate||'',
-    d.setupClass||'', d.candle||'', d.code||'', d.mode||'', d.tf||'',
-    d.trend||'', d.zone||'', d.confirm||'', d.sessions||'',
-    d.emotion||'', d.discipline||'',
-    d.note||'', d.imgLink||'', _now()
+    parseFloat(d.tp)||0, parseFloat(d.sl)||0, d.fiboLevel||&#x27;&#x27;,
+    pnl, fees, comm, d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, d.timeInPos||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;,
+    d.entryDate||&#x27;&#x27;, d.closeDate||&#x27;&#x27;,
+    d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;, d.code||&#x27;&#x27;, d.mode||&#x27;&#x27;, d.tf||&#x27;&#x27;,
+    d.trend||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;, d.sessions||&#x27;&#x27;,
+    d.emotion||&#x27;&#x27;, d.discipline||&#x27;&#x27;,
+    d.note||&#x27;&#x27;, d.imgLink||&#x27;&#x27;, _now()
   ];
   var existing=_findRow(sh,1,id);
-  if(existing<0){
-    var fp=String(d.date||'')+'|'+(d.portfolio||'default')+'|'+String(d.asset||'')+'|'+String(d.side||'')+'|'+String(parseFloat(d.entry)||0)+'|'+String(parseFloat(d.lots)||0);
+  if(existing&lt;0){
+    var fp=String(d.date||&#x27;&#x27;)+&#x27;|&#x27;+(d.portfolio||&#x27;default&#x27;)+&#x27;|&#x27;+String(d.asset||&#x27;&#x27;)+&#x27;|&#x27;+String(d.side||&#x27;&#x27;)+&#x27;|&#x27;+String(parseFloat(d.entry)||0)+&#x27;|&#x27;+String(parseFloat(d.lots)||0);
     existing=_findRowByFingerprint(sh,fp);
-    if(existing>0){ id=String(sh.getRange(existing,1).getValue()||id); row[0]=id; }
+    if(existing&gt;0){ id=String(sh.getRange(existing,1).getValue()||id); row[0]=id; }
   }
-  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   _styleTradeRow(sh,existing,d.result,pnl);
-  _recalc(d.date, d.portfolio||'default');
-  _log('saveTrade','id='+id+' date='+d.date+' asset='+d.asset+' pnl='+pnl+' fees='+fees+' comm='+comm+' result='+d.result,d.portfolio||'default','port','ok');
-  return {status:'ok',id:id};
+  _recalc(d.date, d.portfolio||&#x27;default&#x27;);
+  _log(&#x27;saveTrade&#x27;,&#x27;id=&#x27;+id+&#x27; date=&#x27;+d.date+&#x27; asset=&#x27;+d.asset+&#x27; pnl=&#x27;+pnl+&#x27; fees=&#x27;+fees+&#x27; comm=&#x27;+comm+&#x27; result=&#x27;+d.result,d.portfolio||&#x27;default&#x27;,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,id:id};
 }
 
 function batchSaveTrades(d){
   var trades=d.trades||[];
-  if(!trades.length) return {status:'ok',count:0};
+  if(!trades.length) return {status:&#x27;ok&#x27;,count:0};
   var sh=_sheet(SHEET.TRADES,HDR.TRADES);
   var now=_now();
   var affected={};
@@ -1943,50 +1942,50 @@ function batchSaveTrades(d){
     var id=String(t.id||Date.now()+Math.random());
     var pnl=parseFloat(t.pnl)||0;
     var row=[
-      id, t.date||'', t.portfolio||'default',
-      t.asset||'', t.side||'', parseFloat(t.lots)||0,
+      id, t.date||&#x27;&#x27;, t.portfolio||&#x27;default&#x27;,
+      t.asset||&#x27;&#x27;, t.side||&#x27;&#x27;, parseFloat(t.lots)||0,
       parseFloat(t.entry)||0, parseFloat(t.close)||0,
       parseFloat(t.tp)||0, parseFloat(t.sl)||0,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
-      t.result||'', t.risk||'', t.maxRR||'', t.timeInPos||'', t.setupDuration||'',
-      t.entryDate||'', t.closeDate||'', t.fiboLevel||'',
-      t.setupClass||'', t.candle||'', t.code||'', t.mode||'', t.tf||'',
-      t.trend||'', t.zone||'', t.confirm||'', t.sessions||'',
-      t.emotion||'', t.discipline||'',
-      t.note||'', t.imgLink||'', now
+      t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
+      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
+      t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
+      t.trend||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;, t.sessions||&#x27;&#x27;,
+      t.emotion||&#x27;&#x27;, t.discipline||&#x27;&#x27;,
+      t.note||&#x27;&#x27;, t.imgLink||&#x27;&#x27;, now
     ];
     var existing=_findRow(sh,1,id);
-    if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+    if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
     else{ sh.appendRow(row); existing=sh.getLastRow(); }
     _styleTradeRow(sh,existing,t.result,pnl);
-    var dk=(t.date||'')+'|'+(t.portfolio||'default');
-    affected[dk]={date:t.date,portfolio:t.portfolio||'default'};
+    var dk=(t.date||&#x27;&#x27;)+&#x27;|&#x27;+(t.portfolio||&#x27;default&#x27;);
+    affected[dk]={date:t.date,portfolio:t.portfolio||&#x27;default&#x27;};
   });
   Object.values(affected).forEach(function(a){ _recalc(a.date,a.portfolio); });
-  _log('batchSaveTrades','count='+trades.length,d.portfolio||'default','port','ok');
-  return {status:'ok',count:trades.length};
+  _log(&#x27;batchSaveTrades&#x27;,&#x27;count=&#x27;+trades.length,d.portfolio||&#x27;default&#x27;,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,count:trades.length};
 }
 
 function deleteTrade(d){
   var sh=_sheet(SHEET.TRADES,HDR.TRADES);
   var row=_findRow(sh,1,String(d.id));
-  if(row>0){sh.deleteRow(row); _recalc(d.date, d.portfolio||'default');}
-  _log('deleteTrade','id='+d.id+' date='+d.date+' deleted='+(row>0),d.portfolio||'default','port',row>0?'ok':'not_found');
-  return {status:'ok',deleted:row>0};
+  if(row&gt;0){sh.deleteRow(row); _recalc(d.date, d.portfolio||&#x27;default&#x27;);}
+  _log(&#x27;deleteTrade&#x27;,&#x27;id=&#x27;+d.id+&#x27; date=&#x27;+d.date+&#x27; deleted=&#x27;+(row&gt;0),d.portfolio||&#x27;default&#x27;,&#x27;port&#x27;,row&gt;0?&#x27;ok&#x27;:&#x27;not_found&#x27;);
+  return {status:&#x27;ok&#x27;,deleted:row&gt;0};
 }
 
 function saveSession(d){
   var sh=_sheet(SHEET.SESSIONS,HDR.SESSIONS);
-  var portfolio=d.portfolio||'default';
+  var portfolio=d.portfolio||&#x27;default&#x27;;
   var ts=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.TRADES);
   var pnl=0,wins=0,losses=0,gp=0,gl=0,pnls=[];
-  if(ts&&ts.getLastRow()>1){
+  if(ts&amp;&amp;ts.getLastRow()&gt;1){
     var rows=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===d.date && (r[2]||'default')===portfolio;
+      return r[1]===d.date &amp;&amp; (r[2]||&#x27;default&#x27;)===portfolio;
     });
     rows.forEach(function(r){
       var p=parseFloat(r[10])||0; pnls.push(p); pnl+=p;
-      if(p>0){wins++;gp+=p;} else if(p<0){losses++;gl+=Math.abs(p);}
+      if(p&gt;0){wins++;gp+=p;} else if(p&lt;0){losses++;gl+=Math.abs(p);}
     });
   }
   var total=wins+losses;
@@ -1995,53 +1994,53 @@ function saveSession(d){
   var avgL=losses?+(gl/losses).toFixed(2):0;
   var pf=gl?+(gp/gl).toFixed(2):0;
   var cum=0,peak=0,dd=0;
-  pnls.forEach(function(p){cum+=p;if(cum>peak)peak=cum;if(peak-cum>dd)dd=peak-cum;});
+  pnls.forEach(function(p){cum+=p;if(cum&gt;peak)peak=cum;if(peak-cum&gt;dd)dd=peak-cum;});
   var row=[
-    d.date||'', portfolio,
-    d.emotion||'', d.trend||'', d.confirm||'',
-    d.sessions||'', d.strategies||'', d.notes||'',
+    d.date||&#x27;&#x27;, portfolio,
+    d.emotion||&#x27;&#x27;, d.trend||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
+    d.sessions||&#x27;&#x27;, d.strategies||&#x27;&#x27;, d.notes||&#x27;&#x27;,
     +pnl.toFixed(2), total, wr,
     +gp.toFixed(2), +gl.toFixed(2),
     avgW, avgL, pf, +dd.toFixed(2),
-    d.notesHistory?JSON.stringify(d.notesHistory):'',
+    d.notesHistory?JSON.stringify(d.notesHistory):&#x27;&#x27;,
     _now()
   ];
   var existing=_findRow2(sh,1,d.date,2,portfolio);
-  if(existing>0) sh.getRange(existing,1,1,row.length).setValues([row]);
+  if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
-  _colorRow(sh,existing,pnl>0?'#1a2e22':pnl<0?'#2e1a1f':'#1a1c26');
+  _colorRow(sh,existing,pnl&gt;0?&#x27;#1a2e22&#x27;:pnl&lt;0?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;);
   _stylePnlCell(sh,existing,9,pnl);
   _recalc(d.date, portfolio);
-  _log('saveSession','date='+d.date+' pnl='+pnl.toFixed(2)+' trades='+total+' wr='+wr+'%',portfolio,'port','ok');
-  return {status:'ok',date:d.date,portfolio:portfolio,netPnl:pnl,winRate:wr};
+  _log(&#x27;saveSession&#x27;,&#x27;date=&#x27;+d.date+&#x27; pnl=&#x27;+pnl.toFixed(2)+&#x27; trades=&#x27;+total+&#x27; wr=&#x27;+wr+&#x27;%&#x27;,portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,date:d.date,portfolio:portfolio,netPnl:pnl,winRate:wr};
 }
 
 function deleteDay(d){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var portfolio=d.portfolio||'default';
+  var portfolio=d.portfolio||&#x27;default&#x27;;
   [SHEET.TRADES,SHEET.SESSIONS,SHEET.SUMMARY].forEach(function(name){
-    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()<2) return;
+    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()&lt;2) return;
     var dateCol=name===SHEET.TRADES?2:1;
     var portCol=name===SHEET.TRADES?3:2;
     var vals=sh.getDataRange().getValues();
-    for(var i=vals.length-1;i>=1;i--){
-      if(vals[i][dateCol-1]===d.date && (vals[i][portCol-1]||'default')===portfolio)
+    for(var i=vals.length-1;i&gt;=1;i--){
+      if(vals[i][dateCol-1]===d.date &amp;&amp; (vals[i][portCol-1]||&#x27;default&#x27;)===portfolio)
         sh.deleteRow(i+1);
     }
   });
-  _log('deleteDay','date='+d.date,portfolio,'port','ok');
-  return {status:'ok',date:d.date,portfolio:portfolio};
+  _log(&#x27;deleteDay&#x27;,&#x27;date=&#x27;+d.date,portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,date:d.date,portfolio:portfolio};
 }
 
 function deletePortfolio(d){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var portfolio=String(d.portfolio||'');
-  if(!portfolio) return {status:'error',msg:'no portfolio id'};
+  var portfolio=String(d.portfolio||&#x27;&#x27;);
+  if(!portfolio) return {status:&#x27;error&#x27;,msg:&#x27;no portfolio id&#x27;};
   [SHEET.TRADES,SHEET.SESSIONS,SHEET.SUMMARY].forEach(function(name){
-    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()<2) return;
+    var sh=ss.getSheetByName(name); if(!sh||sh.getLastRow()&lt;2) return;
     var portCol=name===SHEET.TRADES?3:2;
     var vals=sh.getDataRange().getValues();
-    for(var i=vals.length-1;i>=1;i--){
+    for(var i=vals.length-1;i&gt;=1;i--){
       if(String(vals[i][portCol-1])===portfolio) sh.deleteRow(i+1);
     }
   });
@@ -2050,37 +2049,37 @@ function deletePortfolio(d){
     var dpSh=_sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
     // ตรวจว่ามีอยู่แล้วหรือยัง (ป้องกัน duplicate)
     var alreadyDeleted=false;
-    if(dpSh.getLastRow()>1){
+    if(dpSh.getLastRow()&gt;1){
       var existing=dpSh.getRange(2,1,dpSh.getLastRow()-1,1).getValues();
-      for(var i=0;i<existing.length;i++){
+      for(var i=0;i&lt;existing.length;i++){
         if(String(existing[i][0])===portfolio){alreadyDeleted=true;break;}
       }
     }
     if(!alreadyDeleted) dpSh.appendRow([portfolio,_now()]);
   }catch(e){}
-  _log('deletePortfolio','portfolio_delete id='+portfolio,portfolio,'port','ok');
-  return {status:'ok',portfolio:portfolio};
+  _log(&#x27;deletePortfolio&#x27;,&#x27;portfolio_delete id=&#x27;+portfolio,portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,portfolio:portfolio};
 }
 
 function _recalc(date,portfolio){
   if(!date) return;
-  portfolio=portfolio||'default';
+  portfolio=portfolio||&#x27;default&#x27;;
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var ts=ss.getSheetByName(SHEET.TRADES);
   var ses=ss.getSheetByName(SHEET.SESSIONS);
   var sum=_sheet(SHEET.SUMMARY,HDR.SUMMARY);
   var trades=[];
-  if(ts&&ts.getLastRow()>1){
+  if(ts&amp;&amp;ts.getLastRow()&gt;1){
     trades=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===date && (r[2]||'default')===portfolio;
+      return r[1]===date &amp;&amp; (r[2]||&#x27;default&#x27;)===portfolio;
     });
   }
   var pnls=trades.map(function(r){return parseFloat(r[10])||0;});
   var net=pnls.reduce(function(s,v){return s+v;},0);
-  var gp=pnls.filter(function(v){return v>0;}).reduce(function(s,v){return s+v;},0);
-  var gl=Math.abs(pnls.filter(function(v){return v<0;}).reduce(function(s,v){return s+v;},0));
-  var wins=pnls.filter(function(v){return v>0;}).length;
-  var losses=pnls.filter(function(v){return v<0;}).length;
+  var gp=pnls.filter(function(v){return v&gt;0;}).reduce(function(s,v){return s+v;},0);
+  var gl=Math.abs(pnls.filter(function(v){return v&lt;0;}).reduce(function(s,v){return s+v;},0));
+  var wins=pnls.filter(function(v){return v&gt;0;}).length;
+  var losses=pnls.filter(function(v){return v&lt;0;}).length;
   var total=trades.length;
   var wr=total?Math.round(wins/total*100):0;
   var avgW=wins?+(gp/wins).toFixed(2):0;
@@ -2089,13 +2088,13 @@ function _recalc(date,portfolio){
   var best=pnls.length?Math.max.apply(null,pnls):0;
   var worst=pnls.length?Math.min.apply(null,pnls):0;
   var cum=0,peak=0,dd=0;
-  pnls.forEach(function(p){cum+=p;if(cum>peak)peak=cum;if(peak-cum>dd)dd=peak-cum;});
-  var emo='',sessStr='';
-  if(ses&&ses.getLastRow()>1){
+  pnls.forEach(function(p){cum+=p;if(cum&gt;peak)peak=cum;if(peak-cum&gt;dd)dd=peak-cum;});
+  var emo=&#x27;&#x27;,sessStr=&#x27;&#x27;;
+  if(ses&amp;&amp;ses.getLastRow()&gt;1){
     var sr=ses.getDataRange().getValues().slice(1).find(function(r){
-      return r[0]===date && (r[1]||'default')===portfolio;
+      return r[0]===date &amp;&amp; (r[1]||&#x27;default&#x27;)===portfolio;
     });
-    if(sr){emo=sr[2]||''; sessStr=sr[5]||'';}
+    if(sr){emo=sr[2]||&#x27;&#x27;; sessStr=sr[5]||&#x27;&#x27;;}
   }
   var row=[
     date, portfolio, +net.toFixed(2), +gp.toFixed(2), +gl.toFixed(2),
@@ -2104,9 +2103,9 @@ function _recalc(date,portfolio){
     emo, sessStr, _now()
   ];
   var ex=_findRow2(sum,1,date,2,portfolio);
-  if(ex>0) sum.getRange(ex,1,1,row.length).setValues([row]);
+  if(ex&gt;0) sum.getRange(ex,1,1,row.length).setValues([row]);
   else{ sum.appendRow(row); ex=sum.getLastRow(); }
-  _colorRow(sum,ex,net>0?'#1a2e22':net<0?'#2e1a1f':'#1a1c26');
+  _colorRow(sum,ex,net&gt;0?&#x27;#1a2e22&#x27;:net&lt;0?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;);
   _stylePnlCell(sum,ex,3,net);
 }
 
@@ -2118,52 +2117,52 @@ function _sheet(name,headers){
   else{
     // ตรวจหา header ที่หายไปแล้วเพิ่ม column ใหม่
     var lastCol=sh.getLastColumn();
-    var existingHeaders=lastCol>0?sh.getRange(1,1,1,lastCol).getValues()[0]:[];
+    var existingHeaders=lastCol&gt;0?sh.getRange(1,1,1,lastCol).getValues()[0]:[];
     var added=0;
     headers.forEach(function(h){
-      if(existingHeaders.indexOf(h)<0){
+      if(existingHeaders.indexOf(h)&lt;0){
         var newCol=sh.getLastColumn()+1;
         sh.getRange(1,newCol).setValue(h);
-        sh.getRange(1,newCol).setBackground('#0d1117').setFontColor('#4f7aff').setFontWeight('bold').setFontSize(10).setHorizontalAlignment('center');
+        sh.getRange(1,newCol).setBackground(&#x27;#0d1117&#x27;).setFontColor(&#x27;#4f7aff&#x27;).setFontWeight(&#x27;bold&#x27;).setFontSize(10).setHorizontalAlignment(&#x27;center&#x27;);
         try{sh.autoResizeColumn(newCol);}catch(e){}
         existingHeaders.push(h);
         added++;
       }
     });
-    if(added>0){
+    if(added&gt;0){
       sh.setFrozenRows(1);
-      _log('setupSheets','Added '+added+' missing column(s) to '+name,'','system','ok');
+      _log(&#x27;setupSheets&#x27;,&#x27;Added &#x27;+added+&#x27; missing column(s) to &#x27;+name,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
     }
   }
   return sh;
 }
 function _styleHeader(sh,n){
   var r=sh.getRange(1,1,1,n);
-  r.setBackground('#0d1117').setFontColor('#4f7aff').setFontWeight('bold').setFontSize(10).setHorizontalAlignment('center');
+  r.setBackground(&#x27;#0d1117&#x27;).setFontColor(&#x27;#4f7aff&#x27;).setFontWeight(&#x27;bold&#x27;).setFontSize(10).setHorizontalAlignment(&#x27;center&#x27;);
   sh.setFrozenRows(1);try{sh.autoResizeColumns(1,n);}catch(e){}
 }
 function _styleTradeRow(sh,row,result,pnl){
-  var bg=result==='Win'||result==='TP'?'#1a2e22':result==='Loss'||result==='SL'?'#2e1a1f':'#1a1c26';
+  var bg=result===&#x27;Win&#x27;||result===&#x27;TP&#x27;?&#x27;#1a2e22&#x27;:result===&#x27;Loss&#x27;||result===&#x27;SL&#x27;?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;;
   _colorRow(sh,row,bg);_stylePnlCell(sh,row,11,pnl);
 }
 function _styleDataRow(sh,row,result,pnl){
-  var bg=result==='Win'||result==='TP'?'#1a2e22':result==='Loss'||result==='SL'||result==='Miss'?'#2e1a1f':'#1a1c26';
+  var bg=result===&#x27;Win&#x27;||result===&#x27;TP&#x27;?&#x27;#1a2e22&#x27;:result===&#x27;Loss&#x27;||result===&#x27;SL&#x27;||result===&#x27;Miss&#x27;?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;;
   _colorRow(sh,row,bg);_stylePnlCell(sh,row,23,pnl);
 }
 function _colorRow(sh,row,bg){
-  sh.getRange(row,1,1,sh.getLastColumn()).setBackground(bg).setFontColor('#e8eaf0').setFontSize(10);
+  sh.getRange(row,1,1,sh.getLastColumn()).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(10);
 }
 function _stylePnlCell(sh,row,col,pnl){
   var c=sh.getRange(row,col);
-  c.setFontColor(pnl>0?'#2ecc8a':pnl<0?'#ff4d6a':'#8b90a0');
-  c.setFontWeight('bold');
+  c.setFontColor(pnl&gt;0?&#x27;#2ecc8a&#x27;:pnl&lt;0?&#x27;#ff4d6a&#x27;:&#x27;#8b90a0&#x27;);
+  c.setFontWeight(&#x27;bold&#x27;);
 }
 function _findRow(sh,col,val){
-  if(sh.getLastRow()<2) return -1;
+  if(sh.getLastRow()&lt;2) return -1;
   var data=sh.getDataRange().getValues();
   var sVal=String(val).trim();
   var firstFound=-1;
-  for(var i=1;i<data.length;i++){
+  for(var i=1;i&lt;data.length;i++){
     var cell=String(data[i][col-1]).trim();
     if(cell===sVal){
       if(firstFound===-1){ firstFound=i+1; }
@@ -2173,19 +2172,19 @@ function _findRow(sh,col,val){
   return firstFound;
 }
 function _findRow2(sh,col1,val1,col2,val2){
-  if(sh.getLastRow()<2) return -1;
+  if(sh.getLastRow()&lt;2) return -1;
   var data=sh.getDataRange().getValues();
-  for(var i=1;i<data.length;i++){
-    if(String(data[i][col1-1])===String(val1) && String(data[i][col2-1])===String(val2)) return i+1;
+  for(var i=1;i&lt;data.length;i++){
+    if(String(data[i][col1-1])===String(val1) &amp;&amp; String(data[i][col2-1])===String(val2)) return i+1;
   }
   return -1;
 }
 function _findRowByFingerprint(sh,fp){
-  if(sh.getLastRow()<2) return -1;
+  if(sh.getLastRow()&lt;2) return -1;
   var data=sh.getDataRange().getValues();
-  for(var i=1;i<data.length;i++){
+  for(var i=1;i&lt;data.length;i++){
     var r=data[i];
-    var rowFp=String(r[1])+'|'+String(r[2])+'|'+String(r[3])+'|'+String(r[4])+'|'+String(parseFloat(r[6])||0)+'|'+String(parseFloat(r[5])||0);
+    var rowFp=String(r[1])+&#x27;|&#x27;+String(r[2])+&#x27;|&#x27;+String(r[3])+&#x27;|&#x27;+String(r[4])+&#x27;|&#x27;+String(parseFloat(r[6])||0)+&#x27;|&#x27;+String(parseFloat(r[5])||0);
     if(rowFp===fp) return i+1;
   }
   return -1;
@@ -2193,14 +2192,14 @@ function _findRowByFingerprint(sh,fp){
 function _log(action,detail,portfolio,source,result){
   try{
     var sh=_sheet(SHEET.LOG,HDR.LOG);
-    sh.appendRow([_now(),action,(detail||'').toString().substring(0,300),portfolio||'',source||'',result||'ok']);
-    if(sh.getLastRow()>2001) sh.deleteRow(2);
+    sh.appendRow([_now(),action,(detail||&#x27;&#x27;).toString().substring(0,300),portfolio||&#x27;&#x27;,source||&#x27;&#x27;,result||&#x27;ok&#x27;]);
+    if(sh.getLastRow()&gt;2001) sh.deleteRow(2);
     var row=sh.getLastRow();
-    var bg=result==='ok'?'#0d2211':result==='error'||result==='not_found'?'#2e1a1f':'#1a1c26';
-    sh.getRange(row,1,1,6).setBackground(bg).setFontColor('#e8eaf0').setFontSize(9);
+    var bg=result===&#x27;ok&#x27;?&#x27;#0d2211&#x27;:result===&#x27;error&#x27;||result===&#x27;not_found&#x27;?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;;
+    sh.getRange(row,1,1,6).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(9);
   }catch(e){}
 }
-function _now(){return Utilities.formatDate(new Date(),'Asia/Bangkok','yyyy-MM-dd HH:mm:ss');}
+function _now(){return Utilities.formatDate(new Date(),&#x27;Asia/Bangkok&#x27;,&#x27;yyyy-MM-dd HH:mm:ss&#x27;);}
 function _json(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);}
 
 
@@ -2208,24 +2207,24 @@ function deduplicateDataTrades(d){
   // ลบ duplicate rows ใน DataTrades sheet — compound key (ID+EntryTime+Entry+Side)
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var last=sh.getLastRow();
-  if(last<=2) return {status:'ok',removed:0};
+  if(last&lt;=2) return {status:&#x27;ok&#x27;,removed:0};
   var hdr=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
   var idCol=0;
-  var timeCol=hdr.indexOf('EntryTime'); if(timeCol<0)timeCol=7;
-  var entryCol=hdr.indexOf('Entry'); if(entryCol<0)entryCol=7;
-  var sideCol=hdr.indexOf('Side'); if(sideCol<0)sideCol=6;
+  var timeCol=hdr.indexOf(&#x27;EntryTime&#x27;); if(timeCol&lt;0)timeCol=7;
+  var entryCol=hdr.indexOf(&#x27;Entry&#x27;); if(entryCol&lt;0)entryCol=7;
+  var sideCol=hdr.indexOf(&#x27;Side&#x27;); if(sideCol&lt;0)sideCol=6;
   var data=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
   var seenFp={};
   var rowsToDelete=[];
   data.forEach(function(row,i){
-    var id=String(row[idCol]||'').trim();
+    var id=String(row[idCol]||&#x27;&#x27;).trim();
     if(!id){rowsToDelete.push(i+2);return;}
-    var fp=id+'|'+String(row[timeCol]||'').trim().substring(0,5)+'|'+String(row[entryCol]||'').trim()+'|'+String(row[sideCol]||'').trim();
+    var fp=id+&#x27;|&#x27;+String(row[timeCol]||&#x27;&#x27;).trim().substring(0,5)+&#x27;|&#x27;+String(row[entryCol]||&#x27;&#x27;).trim()+&#x27;|&#x27;+String(row[sideCol]||&#x27;&#x27;).trim();
     if(seenFp[fp]){rowsToDelete.push(i+2);}else{seenFp[fp]=true;}
   });
   rowsToDelete.reverse().forEach(function(r){sh.deleteRow(r);});
-  _log('deduplicateDataTrades','removed='+rowsToDelete.length,d&&d.portfolio?d.portfolio:'data','data','ok');
-  return {status:'ok',removed:rowsToDelete.length};
+  _log(&#x27;deduplicateDataTrades&#x27;,&#x27;removed=&#x27;+rowsToDelete.length,d&amp;&amp;d.portfolio?d.portfolio:&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,removed:rowsToDelete.length};
 }
 function cleanDuplicates(){
   // ลบ duplicate rows ออกจากทุก sheet โดยเก็บแถวล่าสุดของแต่ละ ID
@@ -2234,65 +2233,65 @@ function cleanDuplicates(){
 
   // Clean Trades (dedup by ID + fingerprint: date|portfolio|asset|side|entry|lots)
   var tSh=ss.getSheetByName(SHEET.TRADES);
-  if(tSh&&tSh.getLastRow()>1){
+  if(tSh&amp;&amp;tSh.getLastRow()&gt;1){
     var tData=tSh.getDataRange().getValues();
     // Compound key includes EntryDateTime to prevent float ID collision
     var tSeenFp={}; var tDel=[];
     var tHdrRow=tSh.getRange(1,1,1,tSh.getLastColumn()).getValues()[0];
-    var tEDTcol=tHdrRow.indexOf('EntryDateTime'); if(tEDTcol<0)tEDTcol=18;
-    for(var i=tData.length-1;i>=1;i--){
+    var tEDTcol=tHdrRow.indexOf(&#x27;EntryDateTime&#x27;); if(tEDTcol&lt;0)tEDTcol=18;
+    for(var i=tData.length-1;i&gt;=1;i--){
       var r=tData[i];
       var tid=String(r[0]).trim();
       if(!tid){tDel.push(i+1);continue;}
-      var edt=String(r[tEDTcol]||'').trim().substring(0,16);
-      var tfp=tid+'|'+edt+'|'+String(parseFloat(r[6])||0)+'|'+String(r[4]);
+      var edt=String(r[tEDTcol]||&#x27;&#x27;).trim().substring(0,16);
+      var tfp=tid+&#x27;|&#x27;+edt+&#x27;|&#x27;+String(parseFloat(r[6])||0)+&#x27;|&#x27;+String(r[4]);
       if(tSeenFp[tfp]){tDel.push(i+1);}else{tSeenFp[tfp]=true;}
     }
     tDel.sort(function(a,b){return b-a;}).forEach(function(r){tSh.deleteRow(r);});
-    report.push('Trades: removed '+tDel.length+' duplicates');
+    report.push(&#x27;Trades: removed &#x27;+tDel.length+&#x27; duplicates&#x27;);
   }
 
   // Clean Sessions (dedup by Date+Portfolio)
   var sesSh=ss.getSheetByName(SHEET.SESSIONS);
-  if(sesSh&&sesSh.getLastRow()>1){
+  if(sesSh&amp;&amp;sesSh.getLastRow()&gt;1){
     var sData=sesSh.getDataRange().getValues();
     var sHdr=sData[0];
-    var sDateCol=sHdr.indexOf('Date'); var sPortCol=sHdr.indexOf('Portfolio');
-    if(sDateCol<0) sDateCol=0; if(sPortCol<0) sPortCol=1;
+    var sDateCol=sHdr.indexOf(&#x27;Date&#x27;); var sPortCol=sHdr.indexOf(&#x27;Portfolio&#x27;);
+    if(sDateCol&lt;0) sDateCol=0; if(sPortCol&lt;0) sPortCol=1;
     var sSeen={}; var sDel=[];
-    for(var i=sData.length-1;i>=1;i--){
-      var sk=String(sData[i][sPortCol]).trim()+'|'+String(sData[i][sDateCol]).trim();
+    for(var i=sData.length-1;i&gt;=1;i--){
+      var sk=String(sData[i][sPortCol]).trim()+&#x27;|&#x27;+String(sData[i][sDateCol]).trim();
       if(!String(sData[i][sDateCol]).trim()){ sDel.push(i+1); continue; }
       if(sSeen[sk]){ sDel.push(i+1); } else { sSeen[sk]=true; }
     }
     sDel.sort(function(a,b){return b-a;}).forEach(function(r){sesSh.deleteRow(r);});
-    report.push('Sessions: removed '+sDel.length+' duplicates');
+    report.push(&#x27;Sessions: removed &#x27;+sDel.length+&#x27; duplicates&#x27;);
   }
 
   // Clean DataTrades (compound key: ID+EntryTime+Entry+Side — NOT ID alone)
   // Reason: float precision in Sheets collapses float IDs
   var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
-  if(dtSh&&dtSh.getLastRow()>1){
+  if(dtSh&amp;&amp;dtSh.getLastRow()&gt;1){
     var dtHdr2=dtSh.getRange(1,1,1,dtSh.getLastColumn()).getValues()[0];
     var dtIdCol=0;
-    var dtTimeCol=dtHdr2.indexOf('EntryTime'); if(dtTimeCol<0)dtTimeCol=7;
-    var dtEntryCol=dtHdr2.indexOf('Entry'); if(dtEntryCol<0)dtEntryCol=18;
-    var dtSideCol=dtHdr2.indexOf('Side'); if(dtSideCol<0)dtSideCol=6;
+    var dtTimeCol=dtHdr2.indexOf(&#x27;EntryTime&#x27;); if(dtTimeCol&lt;0)dtTimeCol=7;
+    var dtEntryCol=dtHdr2.indexOf(&#x27;Entry&#x27;); if(dtEntryCol&lt;0)dtEntryCol=18;
+    var dtSideCol=dtHdr2.indexOf(&#x27;Side&#x27;); if(dtSideCol&lt;0)dtSideCol=6;
     var dtData=dtSh.getDataRange().getValues();
     var dtSeen={}; var dtDel=[];
-    for(var i=dtData.length-1;i>=1;i--){
+    for(var i=dtData.length-1;i&gt;=1;i--){
       var dtid=String(dtData[i][dtIdCol]).trim();
       if(!dtid){ dtDel.push(i+1); continue; }
-      var dtKey=dtid+'|'+String(dtData[i][dtTimeCol]).trim().substring(0,5)+'|'+String(dtData[i][dtEntryCol]).trim()+'|'+String(dtData[i][dtSideCol]).trim();
+      var dtKey=dtid+&#x27;|&#x27;+String(dtData[i][dtTimeCol]).trim().substring(0,5)+&#x27;|&#x27;+String(dtData[i][dtEntryCol]).trim()+&#x27;|&#x27;+String(dtData[i][dtSideCol]).trim();
       if(dtSeen[dtKey]){ dtDel.push(i+1); } else { dtSeen[dtKey]=true; }
     }
     dtDel.sort(function(a,b){return b-a;}).forEach(function(r){dtSh.deleteRow(r);});
-    report.push('DataTrades: removed '+dtDel.length+' duplicates');
+    report.push(&#x27;DataTrades: removed &#x27;+dtDel.length+&#x27; duplicates&#x27;);
   }
 
-  var msg=report.join('\n');
-  _log('cleanDuplicates',msg,'','system','ok');
-  return {status:'ok',report:report};
+  var msg=report.join(&#x27;\n&#x27;);
+  _log(&#x27;cleanDuplicates&#x27;,msg,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
+  return {status:&#x27;ok&#x27;,report:report};
 }
 
 function setupSheets(){
@@ -2305,32 +2304,33 @@ function setupSheets(){
   _sheet(SHEET.LOG,HDR.LOG);
   _sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var def=ss.getSheetByName('Sheet1');
-  if(def&&ss.getSheets().length>1) ss.deleteSheet(def);
-  SpreadsheetApp.getUi().alert('✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ');
+  var def=ss.getSheetByName(&#x27;Sheet1&#x27;);
+  if(def&amp;&amp;ss.getSheets().length&gt;1) ss.deleteSheet(def);
+  SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ&#x27;);
 }
 function onOpen(){
-  SpreadsheetApp.getUi().createMenu('🔧 TradeLog Pro+')
-    .addItem('⚙️ Setup Sheets','setupSheets')
-    .addItem('📊 Refresh All Summaries','refreshAll')
-    .addItem('🧹 Clean Duplicate Rows','cleanDuplicates')
-    .addItem('🗑 Clear Log','clearLog')
+  SpreadsheetApp.getUi().createMenu(&#x27;🔧 TradeLog Pro+&#x27;)
+    .addItem(&#x27;⚙️ Setup Sheets&#x27;,&#x27;setupSheets&#x27;)
+    .addItem(&#x27;📊 Refresh All Summaries&#x27;,&#x27;refreshAll&#x27;)
+    .addItem(&#x27;🧹 Clean Duplicate Rows&#x27;,&#x27;cleanDuplicates&#x27;)
+    .addItem(&#x27;🗑 Clear Log&#x27;,&#x27;clearLog&#x27;)
     .addToUi();
 }
 function refreshAll(){
   var ts=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.TRADES);
-  if(!ts){SpreadsheetApp.getUi().alert('ไม่พบ Sheet Trades');return;}
+  if(!ts){SpreadsheetApp.getUi().alert(&#x27;ไม่พบ Sheet Trades&#x27;);return;}
   var done={};
   ts.getDataRange().getValues().slice(1).forEach(function(r){
-    if(r[1]){var key=r[1]+'|'+(r[2]||'default');done[key]={date:r[1],port:r[2]||'default'};}
+    if(r[1]){var key=r[1]+&#x27;|&#x27;+(r[2]||&#x27;default&#x27;);done[key]={date:r[1],port:r[2]||&#x27;default&#x27;};}
   });
   Object.values(done).forEach(function(o){_recalc(o.date,o.port);});
-  SpreadsheetApp.getUi().alert('✅ Refresh เสร็จ '+Object.keys(done).length+' รายการ');
+  SpreadsheetApp.getUi().alert(&#x27;✅ Refresh เสร็จ &#x27;+Object.keys(done).length+&#x27; รายการ&#x27;);
 }
 function clearLog(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.LOG);
-  if(sh&&sh.getLastRow()>1) sh.deleteRows(2,sh.getLastRow()-1);
-}</div>
+  if(sh&amp;&amp;sh.getLastRow()&gt;1) sh.deleteRows(2,sh.getLastRow()-1);
+}
+</div>
     <button class="btn-sm" style="margin-top:5px;" onclick="copyCode()">📋 Copy</button></div>
     <div style="margin-top:12px;">
       <!-- Row 1: Primary actions -->
