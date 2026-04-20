@@ -931,7 +931,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
               <th id="dth_risk" onclick="dtSortBy('risk')" style="padding:7px 6px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Risk$ <span id="dthi_risk" style="font-size:9px;opacity:.5;"></span></th>
               <th id="dth_lots" onclick="dtSortBy('lots')" style="padding:7px 6px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Lots <span id="dthi_lots" style="font-size:9px;opacity:.5;"></span></th>
               <th id="dth_disc" onclick="dtSortBy('disc')" style="padding:7px 6px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">วินัย <span id="dthi_disc" style="font-size:9px;opacity:.5;"></span></th>
-              <th id="dth_fiboLevel" onclick="dtSortBy('fiboLevel')" style="padding:7px 6px;text-align:center;color:var(--purple);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--purple)'">Fibo <span id="dthi_fiboLevel" style="font-size:9px;opacity:.5;"></span></th>
+              <th id="dth_fiboLevel" onclick="dtSortBy('fiboLevel')" style="padding:7px 6px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Fibo <span id="dthi_fiboLevel" style="font-size:9px;opacity:.5;"></span></th>
               <th id="dth_pnl" onclick="dtSortBy('pnl')" style="padding:7px 6px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">P&amp;L$ <span id="dthi_pnl" style="font-size:9px;opacity:.5;"></span></th>
               <th id="dth_result" onclick="dtSortBy('result')" style="padding:7px 6px;text-align:center;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Result <span id="dthi_result" style="font-size:9px;opacity:.5;"></span></th>
               <th id="dth_maxRR" onclick="dtSortBy('maxRR')" style="padding:7px 6px;text-align:right;color:var(--text-muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">MaxRR <span id="dthi_maxRR" style="font-size:9px;opacity:.5;"></span></th>
@@ -1316,26 +1316,26 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
             </div>
             <div class="form-field"><label style="display:flex;justify-content:space-between;align-items:center;">Set up Class <button onclick="openDropEdit('oSetupClass','Set up Class')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
               <select class="form-input" id="oSetupClass" style="font-family:var(--font-main);">
-                <option value="">— Select</option>
+                <option value="">Select</option>
               </select>
             </div>
           </div>
           <div class="fg2">
             <div class="form-field"><label style="display:flex;justify-content:space-between;align-items:center;">Candle Pattern <button onclick="openDropEdit('oCandle','Candle Pattern')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
               <select class="form-input" id="oCandle" style="font-family:var(--font-main);">
-                <option value="">— Select</option>
+                <option value="">Select</option>
               </select>
             </div>
             <div class="form-field"><label style="display:flex;justify-content:space-between;align-items:center;">Code <button onclick="openDropEdit('oCode','Code')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
               <select class="form-input" id="oCode" style="font-family:var(--font-main);">
-                <option value="">— Select</option>
+                <option value="">Select</option>
               </select>
             </div>
           </div>
           <div class="fg2">
             <div class="form-field"><label style="display:flex;justify-content:space-between;align-items:center;">Mode <button onclick="openDropEdit('oMode','Mode')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
               <select class="form-input" id="oMode" style="font-family:var(--font-main);">
-                <option value="">— Select</option>
+                <option value="">Select</option>
                 <option value="BE">BE</option>
                 <option value="CHe">CHe</option>
                 <option value="BE>CHe">BE&gt;CHe</option>
@@ -1346,7 +1346,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
             </div>
             <div class="form-field"><label style="display:flex;justify-content:space-between;align-items:center;">Timeframe <button onclick="openDropEdit('oTF','Timeframe')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
               <select class="form-input" id="oTF" style="font-family:var(--font-main);">
-                <option value="">— Select</option>
+                <option value="">Select</option>
                 <option value="M1">M1</option>
                 <option value="M5">M5</option>
                 <option value="M15">M15</option>
@@ -1382,7 +1382,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
                 </div>
                 <div>
                   <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('oFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-                  <select class="form-input" id="oFiboLevel" style="font-family:var(--font-mono);"><option value="">— Select</option></select>
+                  <select class="form-input" id="oFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
                 </div>
               </div>
             </div>
@@ -10057,7 +10057,7 @@ if(document.readyState==='loading'){
       <div class="fg2">
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Result <button onclick="openDropEdit('dtResult','Result')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtResult" onchange="dtCalcAll()"><option value="">— Select</option></select>
+          <select class="form-input" id="dtResult" onchange="dtCalcAll()"><option value="">Select</option></select>
         </div>
         <div class="form-field"><label>Max RR</label><input class="form-input" id="dtMaxRR" type="number" step="0.01" placeholder="0.00"></div>
       </div>
@@ -10074,7 +10074,7 @@ if(document.readyState==='loading'){
         </div>
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Set up Class <button onclick="openDropEdit('dtSetupClass','Set up Class')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtSetupClass"><option value="">— Select</option></select>
+          <select class="form-input" id="dtSetupClass"><option value="">Select</option></select>
         </div>
       </div>
 
@@ -10082,11 +10082,11 @@ if(document.readyState==='loading'){
       <div class="fg2">
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Candle Pattern <button onclick="openDropEdit('dtCandle','Candle Pattern')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtCandle"><option value="">— Select</option></select>
+          <select class="form-input" id="dtCandle"><option value="">Select</option></select>
         </div>
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Code <button onclick="openDropEdit('dtCode','Code')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtCode"><option value="">— Select</option></select>
+          <select class="form-input" id="dtCode"><option value="">Select</option></select>
         </div>
       </div>
 
@@ -10094,11 +10094,11 @@ if(document.readyState==='loading'){
       <div class="fg2">
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Mode <button onclick="openDropEdit('dtMode','Mode')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtMode"><option value="">— Select</option></select>
+          <select class="form-input" id="dtMode"><option value="">Select</option></select>
         </div>
         <div class="form-field">
           <label style="display:flex;justify-content:space-between;align-items:center;">Timeframe <button onclick="openDropEdit('dtTF','Timeframe')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></label>
-          <select class="form-input" id="dtTF"><option value="">— Select</option></select>
+          <select class="form-input" id="dtTF"><option value="">Select</option></select>
         </div>
       </div>
 
@@ -10127,7 +10127,7 @@ if(document.readyState==='loading'){
             </div>
             <div>
               <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('dtFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-              <select class="form-input" id="dtFiboLevel" style="font-family:var(--font-mono);"><option value="">— Select</option></select>
+              <select class="form-input" id="dtFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
             </div>
           </div>
         </div>
@@ -11638,29 +11638,52 @@ async function authGoogleSignIn(){
   var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
   if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
 
-  // ถ้ามี Google Identity Services และ Client ID → ใช้ One Tap
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
   if(clientId && window.google && google.accounts){
+    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
+    if(google.accounts.oauth2){
+      try{
+        google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile',
+          prompt: 'select_account',
+          callback: function(tokenResp){
+            if(tokenResp && tokenResp.access_token){
+              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
+              }).then(function(r){ return r.json(); })
+                .then(function(info){
+                  var email = (info.email || '').toLowerCase().trim();
+                  var name  = info.name || email;
+                  if(email) _processGoogleLogin(email, name);
+                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
+            }
+          }
+        }).requestAccessToken();
+        return;
+      }catch(e){}
+    }
+    // fallback: One Tap popup mode
     try{
       google.accounts.id.initialize({
         client_id: clientId,
-        callback: function(resp){ _handleGoogleCredential(resp.credential); }
+        callback: function(resp){ _handleGoogleCredential(resp.credential); },
+        ux_mode: 'popup'
       });
       google.accounts.id.prompt(function(notification){
         if(notification.isNotDisplayed() || notification.isSkippedMoment()){
-          // fallback → popup
           _googlePopupFallback();
         }
       });
       return;
-    }catch(e){}
+    }catch(e2){}
   }
-  // fallback สำหรับกรณีที่ไม่มี GOOGLE_CLIENT_ID — แจ้ง User
   _googlePopupFallback();
 }
 
 function _googlePopupFallback(){
-  // แสดง prompt ให้ User ใส่ email Google โดยตรง (เหมาะกับ deployment ง่ายๆ)
+  // fallback เมื่อไม่มี GOOGLE_CLIENT_ID
   var email = prompt('กรอก Gmail ของคุณ (ใช้เป็น Username ในระบบ):');
   if(!email || !email.includes('@')) return;
   var name  = prompt('ชื่อที่ต้องการแสดง (กด Cancel เพื่อใช้ email):') || email;
