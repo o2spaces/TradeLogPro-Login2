@@ -4,7 +4,7 @@
 //  ไฟล์นี้ไม่ควรแชร์ให้ User ทั่วไป
 // ═══════════════════════════════════════════════════════════════
 
-window.AUTH_GAS_URL = 'https://script.google.com/macros/s/AKfycbxZ_Og81D5wqtijoLkNh3C4W2iFJUc7A6D8j8ylbpoe1416fvNa__m4ifehdkUw5RrqPw/exec';
+window.AUTH_GAS_URL = 'https://script.google.com/macros/s/AKfycbxEDc9JFhOkiDosNw2JN6txEMO0C7vAl8NlVJr_ilhT8t4iiRDmFZWD-s-fEH3iehU3Og/exec';
 
 // วิธีใช้:
 // 1. สร้าง Google Sheet ใหม่สำหรับ Auth (ไม่ใช่ Sheet ของ User)

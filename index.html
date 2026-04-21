@@ -2623,9 +2623,9 @@ function _authInit(){
       _authSession = saved;
       _authApply(saved);
       document.getElementById('authOverlay').style.display = 'none';
-      // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
+      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
       var localUrl = localStorage.getItem('tj_url') || '';
-      if(!saved.scriptUrl && !localUrl){
+      if(!localUrl){
         _showSetupSheetOverlay();
       }
       return;
@@ -2911,7 +2911,6 @@ async function _processGoogleLogin(email, name){
         username:    data.username,
         displayName: data.displayName || name,
         role:        data.role,
-        scriptUrl:   data.scriptUrl || '',
         loginType:   'google',
         expiry:      Date.now() + 7 * 24 * 60 * 60 * 1000  // Google session = 7 วัน
       };
@@ -2926,10 +2925,6 @@ async function _processGoogleLogin(email, name){
       }catch(e){}
       localStorage.setItem('tj_session', JSON.stringify(session));
       _authSession = session;
-      if(session.scriptUrl){
-        S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
-      }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
       ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
@@ -2941,8 +2936,9 @@ async function _processGoogleLogin(email, name){
         showToast('👋 ยินดีต้อนรับกลับ ' + session.displayName + '!', 'success');
       }
 
-      // ถ้าไม่มี scriptUrl → แสดง setup overlay
-      if(!session.scriptUrl && !localStorage.getItem('tj_url')){
+      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
+      var localUrl = localStorage.getItem('tj_url') || '';
+      if(!localUrl){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
         setConn(true); syncFromSheet();
@@ -2991,26 +2987,21 @@ async function authDoLogin(){
         username:    data.username,
         displayName: data.displayName || data.username,
         role:        data.role,
-        scriptUrl:   data.scriptUrl || '',
         _hash:       hash,
         loginType:   'password',
         expiry:      Date.now() + 24 * 60 * 60 * 1000
       };
       localStorage.setItem('tj_session', JSON.stringify(session));
       _authSession = session;
-      if(session.scriptUrl){
-        S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
-      }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
       ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
       setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
       showToast('👋 ยินดีต้อนรับ ' + session.displayName + '!', 'success');
 
-      // ถ้าไม่มี scriptUrl → แสดง setup overlay
+      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
       var localUrl = localStorage.getItem('tj_url') || '';
-      if(!session.scriptUrl && !localUrl){
+      if(!localUrl){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
         setConn(true); syncFromSheet();
@@ -3045,8 +3036,8 @@ function _authApply(session){
   // แสดงเมนู "ตั้งค่า Sheet URL ของฉัน" เมื่อ login ด้วย auth system
   var menuSetup = document.getElementById('menuSetupSheet');
   if(menuSetup) menuSetup.style.display = '';
-  // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
-  var urlToUse = session.scriptUrl || localStorage.getItem('tj_url') || '';
+  // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้เท่านั้น (ไม่ดึงจาก server)
+  var urlToUse = localStorage.getItem('tj_url') || '';
   if(urlToUse) S.scriptUrl = urlToUse;
 }
 
@@ -3112,32 +3103,7 @@ async function setupSheetSave(){
   S.scriptUrl = url;
   localStorage.setItem('tj_url', url);
 
-  // อัปเดต session ใน memory
-  if(_authSession){ _authSession.scriptUrl = url; }
-
-  // ส่งกลับ Auth Server ให้จำสำหรับ login ครั้งหน้า (ถ้ามี password hash)
-  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(authUrl && _authSession && _authSession._hash){
-    try{
-      await fetch(authUrl, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          action:       'updateScriptUrl',
-          username:     _authSession.username,
-          passwordHash: _authSession._hash,
-          scriptUrl:    url
-        })
-      });
-      // อัปเดต session ที่เก็บไว้ด้วย
-      var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-      if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-    }catch(e){ console.warn('updateScriptUrl failed:', e); }
-  } else if(authUrl && _authSession && _authSession.loginType === 'google'){
-    // Google login ไม่มี hash — บันทึกแค่ localStorage ก็พอ (session expire แล้ว sync กลับ Auth ไม่ได้)
-    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-    if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-  }
+  // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้ — ไม่ส่งกลับ Auth Server
 
   btn.disabled = false; btn.textContent = '✅ บันทึกและเชื่อมต่อ';
 
@@ -3176,15 +3142,15 @@ function closeAdminPanel(){
 
 function adminLoadUsers(){
   var tbody = document.getElementById('adminBody');
-  tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
   var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
+  if(!url){ tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
 
   fetch(url + '?action=getUsers&adminUser=' + encodeURIComponent(_authSession.username))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.status !== 'ok'){
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
       }
       var users = d.users || [];
       var today = new Date().toDateString();
@@ -3195,12 +3161,11 @@ function adminLoadUsers(){
       document.getElementById('stAdmins').textContent = adminCount;
 
       if(!users.length){
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
       }
       tbody.innerHTML = users.map(function(u){
         var isToday  = u.lastLogin && new Date(u.lastLogin).toDateString()===today;
         var llStr    = u.lastLogin ? new Date(u.lastLogin).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '<span style="color:var(--text-muted)">ยังไม่เคย</span>';
-        var urlShort = u.scriptUrl ? u.scriptUrl.replace('https://script.google.com/macros/s/','…/').substring(0,36)+'…' : '<span style="color:var(--text-muted)">—</span>';
         var isSelf   = u.username === _authSession.username;
         return '<tr>'
           + '<td><span style="font-weight:600;">' + (isToday?'<span class="online-pip"></span>':'') + u.username + '</span>'
@@ -3208,7 +3173,6 @@ function adminLoadUsers(){
           + '<td><span class="role-badge '+(u.role==='admin'?'admin':'user')+'">'+(u.role==='admin'?'🛡 Admin':'👤 User')+'</span></td>'
           + '<td>' + llStr + '</td>'
           + '<td style="text-align:center;font-family:var(--font-mono);font-weight:600;color:var(--accent);">' + (u.loginCount||0) + '</td>'
-          + '<td style="font-size:9px;font-family:var(--font-mono);color:var(--teal);">' + urlShort + '</td>'
           + '<td style="text-align:center;">'
           + (isSelf ? '<span style="color:var(--text-muted);font-size:10px;">—</span>'
             : '<button onclick="adminDeleteUser(\''+u.username+'\')" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;padding:2px 8px;border-radius:4px;font-size:10px;" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-muted)\'">✕ ลบ</button>')
@@ -3216,7 +3180,7 @@ function adminLoadUsers(){
       }).join('');
     })
     .catch(function(e){
-      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
     });
 }
 
@@ -3224,7 +3188,6 @@ async function adminAddUser(){
   var uname   = (document.getElementById('regUser').value    || '').trim().toLowerCase();
   var pass    = document.getElementById('regPass').value     || '';
   var role    = document.getElementById('regRole').value     || 'user';
-  var script  = (document.getElementById('regScript').value  || '').trim();
   var display = (document.getElementById('regDisplay').value || '').trim();
   var errEl   = document.getElementById('regErr');
   var btn     = document.getElementById('regBtn');
@@ -3238,13 +3201,11 @@ async function adminAddUser(){
     var url  = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
     var res  = await fetch(url, { method:'POST', body:JSON.stringify({
       action:'registerUser', adminUser:_authSession.username,
-      username:uname, passwordHash:hash, role:role,
-      scriptUrl:script, displayName:display||uname
+      username:uname, passwordHash:hash, role:role, displayName:display||uname
     })});
     var data = await res.json();
     if(data.status==='ok'){
       showToast('✅ เพิ่ม User "'+uname+'" สำเร็จ','success');
-      ['regUser','regPass','regScript','regDisplay'].forEach(function(id){ document.getElementById(id).value=''; });
       adminLoadUsers();
     } else {
       errEl.textContent = '❌ ' + (data.msg||'เกิดข้อผิดพลาด'); errEl.style.display='block';
@@ -3802,12 +3763,9 @@ function init(){
   try{
     S.sessions=JSON.parse(localStorage.getItem('tj_s')||'{}');
     S.trades=JSON.parse(localStorage.getItem('tj_t')||'{}');
-    // Priority: session.scriptUrl > localStorage tj_url
+    // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้เท่านั้น
     var localUrl = localStorage.getItem('tj_url') || '';
-    var sessionUrl = (_authSession && _authSession.scriptUrl) ? _authSession.scriptUrl : '';
-    S.scriptUrl = sessionUrl || localUrl;
-    // ถ้า session มี scriptUrl แต่ localStorage ไม่มี → sync ลง localStorage
-    if(sessionUrl && !localUrl){ localStorage.setItem('tj_url', sessionUrl); }
+    S.scriptUrl = localUrl;
     S.keys=JSON.parse(localStorage.getItem('tj_k')||'{}');
     S.prov=localStorage.getItem('tj_p')||'gemini';
     S.provBackup=localStorage.getItem('tj_pb')||'groq';
@@ -12338,8 +12296,6 @@ document.addEventListener('mouseup', function(){
           </div>
         </div>
         <div style="margin-bottom:10px;">
-          <div class="auth-label">Script URL (GAS URL ของ User นี้ — ว่างได้ถ้ายังไม่มี)</div>
-          <input class="settings-input" id="regScript" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
         <button id="regBtn" class="btn-primary" onclick="adminAddUser()" style="font-size:12px;">➕ เพิ่ม User</button>
       </div>
@@ -12354,11 +12310,11 @@ document.addEventListener('mouseup', function(){
           <thead>
             <tr>
               <th>Username</th><th>Role</th><th>Last Login</th>
-              <th style="text-align:center;">Login ทั้งหมด</th><th>Script URL</th><th style="text-align:center;">จัดการ</th>
+              <th style="text-align:center;">Login ทั้งหมด</th><th style="text-align:center;">จัดการ</th>
             </tr>
           </thead>
           <tbody id="adminBody">
-            <tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>
           </tbody>
         </table>
       </div>

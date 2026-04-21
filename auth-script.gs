@@ -12,7 +12,7 @@
 //  4. Copy Deployment URL → ใส่ใน config.js
 //
 //  Users Sheet ที่จะถูกสร้างอัตโนมัติ (ใน Spreadsheet นี้):
-//  username | passwordHash | role | scriptUrl | displayName | createdAt | lastLogin | loginCount
+//  username | passwordHash | role | displayName | createdAt | lastLogin | loginCount
 // ═══════════════════════════════════════════════════════════════
 
 var USERS_SHEET = 'Users';
@@ -37,7 +37,6 @@ function doPost(e) {
     if (d.action === 'registerUser')    return _json(registerUser(d));
     if (d.action === 'deleteUser')      return _json(deleteUser(d));
     if (d.action === 'changePassword')  return _json(changePassword(d));
-    if (d.action === 'updateScriptUrl') return _json(updateScriptUrl(d));
     if (d.action === 'googleLogin')     return _json(googleLogin(d));
     return _json({ status: 'error', msg: 'Unknown action: ' + d.action });
   } catch (err) {
@@ -58,13 +57,12 @@ function _getSheet() {
   var sh = ss.getSheetByName(USERS_SHEET);
   if (!sh) {
     sh = ss.insertSheet(USERS_SHEET);
-    sh.appendRow(['username', 'passwordHash', 'role', 'scriptUrl', 'displayName', 'createdAt', 'lastLogin', 'loginCount']);
+    sh.appendRow(['username', 'passwordHash', 'role', 'displayName', 'createdAt', 'lastLogin', 'loginCount']);
     sh.setFrozenRows(1);
     // Format header row
-    sh.getRange(1, 1, 1, 8).setFontWeight('bold').setBackground('#1a1e2a').setFontColor('#ffffff');
+    sh.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#1a1e2a').setFontColor('#ffffff');
     sh.setColumnWidth(1, 130);
     sh.setColumnWidth(2, 200);
-    sh.setColumnWidth(4, 400);
   }
   return sh;
 }
@@ -83,7 +81,6 @@ function _getAllUsers() {
       username:     String(r[gi('username')] || '').toLowerCase().trim(),
       passwordHash: String(r[gi('passwordHash')] || '').toLowerCase().trim(),
       role:         String(r[gi('role')] || 'user'),
-      scriptUrl:    String(r[gi('scriptUrl')] || ''),
       displayName:  String(r[gi('displayName')] || ''),
       createdAt:    String(r[gi('createdAt')] || ''),
       lastLogin:    r[gi('lastLogin')] ? new Date(r[gi('lastLogin')]).toISOString() : '',
@@ -103,7 +100,7 @@ function _isAdmin(username, users) {
 
 /**
  * Login: ตรวจ username + passwordHash
- * Returns: { status, username, displayName, role, scriptUrl }
+ * Returns: { status, username, displayName, role }
  */
 function login(params) {
   var username = (params.username || '').toLowerCase().trim();
@@ -129,8 +126,7 @@ function login(params) {
     status:      'ok',
     username:    found.username,
     displayName: found.displayName || found.username,
-    role:        found.role,
-    scriptUrl:   found.scriptUrl
+    role:        found.role
   };
 }
 
@@ -149,7 +145,6 @@ function getUsers(params) {
         username:    u.username,
         displayName: u.displayName,
         role:        u.role,
-        scriptUrl:   u.scriptUrl,
         createdAt:   u.createdAt,
         lastLogin:   u.lastLogin,
         loginCount:  u.loginCount
@@ -180,7 +175,6 @@ function registerUser(d) {
     uname,
     hash,
     d.role || 'user',
-    d.scriptUrl || '',
     d.displayName || uname,
     new Date().toISOString(),
     '',
@@ -235,34 +229,9 @@ function changePassword(d) {
 }
 
 /**
- * updateScriptUrl: User อัปเดต scriptUrl ของตัวเอง (ไม่ต้องมีสิทธิ์ Admin)
- * ต้องยืนยันตัวตนด้วย username + passwordHash
- */
-function updateScriptUrl(d) {
-  var username  = (d.username     || '').toLowerCase().trim();
-  var hash      = (d.passwordHash || '').toLowerCase().trim();
-  var scriptUrl = (d.scriptUrl    || '').trim();
-  if (!username || !hash) return { status: 'error', msg: 'ข้อมูลไม่ครบ' };
-
-  var users = _getAllUsers();
-  var found = null;
-  for (var i = 0; i < users.length; i++) {
-    if (users[i].username === username) { found = users[i]; break; }
-  }
-  if (!found)                         return { status: 'error', msg: 'ไม่พบ User' };
-  if (found.passwordHash !== hash)    return { status: 'error', msg: 'Password ไม่ถูกต้อง' };
-
-  var sh = _getSheet();
-  var h  = sh.getDataRange().getValues()[0];
-  var gi = function(n) { return h.indexOf(n) + 1; };
-  sh.getRange(found._row, gi('scriptUrl')).setValue(scriptUrl);
-  return { status: 'ok', scriptUrl: scriptUrl };
-}
-
-/**
  * googleLogin: Login ด้วย Google Account (ตรวจสอบ email จาก Google ID token)
  * ถ้า email ตรงกับ username ใน Users Sheet → login สำเร็จ
- * ถ้าไม่เจอ → auto-register User ใหม่ (role=user, scriptUrl='')
+ * ถ้าไม่เจอ → auto-register User ใหม่ (role=user)
  */
 function googleLogin(params) {
   var email = (params.email || '').toLowerCase().trim();
@@ -292,7 +261,6 @@ function googleLogin(params) {
       username,
       'GOOGLE_AUTH',   // ไม่มี password — login ผ่าน Google เท่านั้น
       'user',
-      '',              // scriptUrl ว่าง — User จะใส่เองภายหลัง
       name || email,
       new Date().toISOString(),
       new Date().toISOString(),
@@ -303,7 +271,6 @@ function googleLogin(params) {
       username:    username,
       displayName: name || email,
       role:        'user',
-      scriptUrl:   '',
       isNew:       true
     };
   }
@@ -317,7 +284,6 @@ function googleLogin(params) {
     username:    found.username,
     displayName: found.displayName || name || found.username,
     role:        found.role,
-    scriptUrl:   found.scriptUrl,
     isNew:       false
   };
 }
@@ -327,8 +293,6 @@ function googleLogin(params) {
 function createFirstAdmin() {
   var USERNAME  = 'admin';        // ← เปลี่ยนได้
   var PASSWORD  = 'admin1234';    // ← เปลี่ยนก่อนรัน!
-  var SCRIPT_URL = '';            // ← ใส่ Script URL ของ admin (ถ้ามี)
-
   var hash = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
     PASSWORD,
@@ -346,7 +310,7 @@ function createFirstAdmin() {
   }
 
   var sh = _getSheet();
-  sh.appendRow([USERNAME, hash, 'admin', SCRIPT_URL, 'Administrator', new Date().toISOString(), '', 0]);
+  sh.appendRow([USERNAME, hash, 'admin', 'Administrator', new Date().toISOString(), '', 0]);
   Logger.log('✅ สร้าง Admin "' + USERNAME + '" เสร็จแล้ว');
   Logger.log('   Username: ' + USERNAME);
   Logger.log('   Password: ' + PASSWORD);
