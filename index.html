@@ -566,12 +566,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div id="authErr" class="auth-err"></div>
     <div id="authNoUrl" class="auth-no-url" style="display:none;">⚠️ ระบบยังไม่ได้ตั้งค่า กรุณาติดต่อ Admin</div>
 
-    <!-- Google Sign-In Button (OAuth จริง) -->
+    <!-- Google Sign-In Button -->
     <div id="googleSignInWrap" style="margin-bottom:4px;">
-      <!-- Google Identity Services จะ render ปุ่มที่นี่ -->
-      <div id="g_id_signin_btn" style="display:flex;justify-content:center;"></div>
-      <!-- fallback ปุ่มแบบ custom ถ้า GSI ยังโหลดไม่เสร็จ -->
-      <button id="googleFallbackBtn" class="auth-google-btn" onclick="authGoogleSignIn()" style="display:none;">
+      <button class="auth-google-btn" onclick="authGoogleSignIn()">
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
         เข้าสู่ระบบด้วย Google
       </button>
@@ -2636,118 +2633,121 @@ function _authInit(){
   }catch(e){}
 
   document.getElementById('authOverlay').style.display = 'flex';
-  // Init Google Sign-In button (OAuth จริง)
+  // Init Google One Tap
   _initGoogleOneTap(url);
-  // แสดง fallback btn ชั่วคราวก่อน GSI render เสร็จ
-  setTimeout(function(){
-    var btnDiv = document.getElementById('g_id_signin_btn');
-    var fb = document.getElementById('googleFallbackBtn');
-    if(fb && btnDiv && !btnDiv.querySelector('iframe')){
-      fb.style.display = 'flex';
-    }
-  }, 3000);
 }
 
-// ── Google OAuth 2.0 — render button จริง + Token Client ─────────────────
-function _initGoogleOneTap(authUrl){
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId) return;
+// ── Google Sign-In ─────────────────────────────────────────────
+// ใช้ google.accounts.id.initialize + ux_mode:'popup'
+// — วิธีนี้ trigger จาก button click ได้โดยตรง ไม่ถูก block
 
-  // รอให้ GSI library โหลดเสร็จก่อน render
-  function _doInit(){
-    if(!window.google || !google.accounts) return;
+var _googleIdInitialized = false;
+
+function _initGoogleOneTap(authUrl){
+  // ไม่ต้อง init ตอนโหลดหน้า — รอให้ user กดปุ่มก่อน
+  // แค่ตรวจว่า GSI library โหลดมาหรือยัง
+}
+
+function authGoogleSignIn(){
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(!clientId){
+    showToast('ไม่ได้ตั้งค่า GOOGLE_CLIENT_ID','error'); return;
+  }
+
+  var btn = document.querySelector('.auth-google-btn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.65'; }
+
+  function _restoreBtn(){ if(btn){ btn.disabled=false; btn.style.opacity='1'; } }
+
+  // รอ GSI library (โหลด async) ถ้ายังไม่พร้อม
+  function _doSignIn(){
+    if(!window.google || !window.google.accounts || !window.google.accounts.id){
+      _restoreBtn();
+      showToast('Google library ยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่','error');
+      return;
+    }
     try{
-      // Initialize GSI พร้อม callback สำหรับ ID token (One Tap)
+      // initialize ทุกครั้งที่กด เพื่อให้ prompt ขึ้นใหม่ได้
       google.accounts.id.initialize({
         client_id: clientId,
-        callback: function(resp){ _handleGoogleCredential(resp.credential); },
+        callback: function(resp){
+          _restoreBtn();
+          if(resp && resp.credential){
+            _handleGoogleCredential(resp.credential);
+          } else {
+            showToast('Google Sign-In ถูกยกเลิก','error');
+          }
+        },
         auto_select: false,
         cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: true
+        ux_mode: 'popup',
+        context: 'signin'
       });
 
-      // Render ปุ่ม Sign in with Google จริงๆ (ขึ้น account chooser)
-      var btnDiv = document.getElementById('g_id_signin_btn');
-      if(btnDiv){
-        google.accounts.id.renderButton(btnDiv, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'rectangular',
-          logo_alignment: 'left',
-          width: 300
-        });
-        // ซ่อน fallback
-        var fb = document.getElementById('googleFallbackBtn');
-        if(fb) fb.style.display = 'none';
-      }
+      // prompt เปิด account chooser popup
+      google.accounts.id.prompt(function(notification){
+        if(notification.isNotDisplayed()){
+          _restoreBtn();
+          // popup ถูก block หรือ browser ไม่รองรับ — fallback Token Client
+          _googleTokenClientFallback(clientId, _restoreBtn);
+        } else if(notification.isSkippedMoment()){
+          _restoreBtn();
+        }
+      });
     }catch(e){
-      // ถ้า render ไม่ได้ แสดง fallback
-      var fb = document.getElementById('googleFallbackBtn');
-      if(fb) fb.style.display = 'flex';
+      _restoreBtn();
+      showToast('Google Sign-In error: ' + e.message,'error');
     }
   }
 
-  // ถ้า GSI โหลดแล้ว init ทันที ถ้ายังไม่โหลดให้รอ
-  if(window.google && google.accounts){ _doInit(); }
-  else{
-    var _gsiWait = setInterval(function(){
-      if(window.google && google.accounts){ clearInterval(_gsiWait); _doInit(); }
-    }, 100);
-    setTimeout(function(){
-      clearInterval(_gsiWait);
-      // timeout — แสดง fallback
-      var fb = document.getElementById('googleFallbackBtn');
-      if(fb) fb.style.display = 'flex';
-    }, 5000);
+  if(window.google && window.google.accounts && window.google.accounts.id){
+    _doSignIn();
+  } else {
+    // รอ GSI โหลดเสร็จ max 5s
+    var waited = 0;
+    var iv = setInterval(function(){
+      waited += 200;
+      if(window.google && window.google.accounts && window.google.accounts.id){
+        clearInterval(iv); _doSignIn();
+      } else if(waited >= 5000){
+        clearInterval(iv); _restoreBtn();
+        showToast('Google library โหลดไม่ได้ ตรวจสอบ network แล้วลองใหม่','error');
+      }
+    }, 200);
   }
 }
 
-// ── ปุ่ม Google fallback — ใช้ Token Client (OAuth popup เต็มรูปแบบ) ────
-async function authGoogleSignIn(){
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId){ showToast('ระบบยังไม่พร้อม','error'); return; }
-
-  var btn = document.getElementById('googleFallbackBtn');
-  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; }
-
+// Fallback: Token Client (ถ้า id.prompt ไม่ทำงาน)
+function _googleTokenClientFallback(clientId, restoreFn){
+  if(!window.google || !google.accounts || !google.accounts.oauth2){
+    if(restoreFn) restoreFn();
+    showToast('ไม่สามารถเปิด Google Sign-In ได้','error'); return;
+  }
   try{
-    if(window.google && google.accounts && google.accounts.oauth2){
-      google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'email profile openid',
-        prompt: 'select_account',
-        callback: function(tokenResp){
-          if(!tokenResp || !tokenResp.access_token){
-            if(btn){ btn.disabled=false; btn.style.opacity='1'; }
-            showToast('Google Sign-In ถูกยกเลิก','error'); return;
-          }
-          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: 'Bearer ' + tokenResp.access_token }
-          }).then(function(r){ return r.json(); })
-            .then(function(info){
-              var email = (info.email||'').toLowerCase().trim();
-              var name  = info.name || info.given_name || email;
-              if(btn){ btn.disabled=false; btn.style.opacity='1'; }
-              if(email) _processGoogleLogin(email, name);
-              else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-            }).catch(function(){
-              if(btn){ btn.disabled=false; btn.style.opacity='1'; }
-              showToast('Google Sign-In ล้มเหลว','error');
-            });
-        },
-        error_callback: function(){
-          if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+    google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'email profile openid',
+      prompt: 'select_account',
+      callback: function(tokenResp){
+        if(restoreFn) restoreFn();
+        if(!tokenResp || !tokenResp.access_token){
+          showToast('Google Sign-In ถูกยกเลิก','error'); return;
         }
-      }).requestAccessToken();
-    } else {
-      if(btn){ btn.disabled=false; btn.style.opacity='1'; }
-      showToast('Google library ยังโหลดไม่เสร็จ ลองใหม่อีกครั้ง','error');
-    }
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+          headers:{ Authorization:'Bearer '+tokenResp.access_token }
+        }).then(function(r){ return r.json(); })
+          .then(function(info){
+            var email=(info.email||'').toLowerCase().trim();
+            var name=info.name||info.given_name||email;
+            if(email) _processGoogleLogin(email, name);
+            else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+          }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
+      },
+      error_callback: function(){ if(restoreFn) restoreFn(); }
+    }).requestAccessToken();
   }catch(e){
-    if(btn){ btn.disabled=false; btn.style.opacity='1'; }
-    showToast('Google Sign-In error: ' + e.message,'error');
+    if(restoreFn) restoreFn();
+    showToast('Google Sign-In error: '+e.message,'error');
   }
 }
 
