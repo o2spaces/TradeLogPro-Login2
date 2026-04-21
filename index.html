@@ -564,7 +564,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div class="auth-title">TradeLog Pro+</div>
     <div class="auth-sub">กรุณาเข้าสู่ระบบเพื่อใช้งาน</div>
     <div id="authErr" class="auth-err"></div>
-    <div id="authNoUrl" class="auth-no-url" style="display:none;">⚠️ ระบบยังไม่ได้ตั้งค่า กรุณาติดต่อ Admin</div>
+    <div id="authNoUrl" class="auth-no-url" style="display:none;">⚠️ ระบบยังไม่ได้ตั้งค่า กรุณา Deploy Auth Script และตั้งค่า <code style="font-size:10px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;">AUTH_GAS_URL</code> ใน <code style="font-size:10px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;">config.js</code></div>
 
     <!-- Google Sign-In Button -->
     <div id="googleSignInWrap" style="margin-bottom:4px;">
@@ -640,8 +640,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         <div id="dataToggleThumb" style="position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-muted);transition:all .2s;"></div>
       </div>
     </div>
-    <div class="sheet-status"><div class="status-dot" id="sDot"></div><span id="sTxt">Offline</span></div>
-    <button class="btn-icon" onclick="toggleTheme()">◑</button>
+    <div class="sheet-status"><div class="status-dot" id="sDot"></div><span id="sTxt">Local</span></div>
+    <button class="btn-icon" onclick="toggleTheme()" title="สลับ Dark / Light Mode" aria-label="สลับธีม">◑</button>
     <div id="userChip" class="user-chip" style="display:none;">
       <div class="user-avatar" id="userAvatar">?</div>
       <span id="userDisplayName" style="color:var(--text-primary);font-weight:500;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -651,7 +651,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <button class="btn-icon" id="logoutBtn" title="ออกจากระบบ" onclick="authLogout()"
       style="display:none;" >🚪</button>
     <div style="position:relative;">
-      <button class="btn-icon" id="menuBtn" onclick="toggleMenu(event)">⚙</button>
+      <button class="btn-icon" id="menuBtn" onclick="toggleMenu(event)" title="เมนูตั้งค่า" aria-label="เมนูตั้งค่า">⚙</button>
       <div id="dropMenu" style="display:none;position:absolute;right:0;top:35px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);min-width:215px;z-index:300;overflow:hidden;">
         <div style="padding:5px 0;">
           <div class="drop-cat">ไฟล์</div>
@@ -728,6 +728,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
       </div>
     </div>
     <div class="calendar-grid" id="calGrid"></div>
+    <div style="font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;padding:0 2px;">📅 สถิติรายเดือน</div>
     <div class="stats-section">
       <div class="stats-card"><div class="stats-card-title">📈 Profit / Loss</div>
         <div class="stats-row"><span class="stats-key">Gross profit</span><span class="stats-v pos" id="d-gp">$0.00</span></div>
@@ -767,7 +768,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
       </div>
     </div>
     <div class="weekly-grid-container"><div id="weeklyGrid"></div></div>
-    <div class="stats-section" style="margin-top:12px;">
+    <div style="font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;padding:0 2px;">📊 สถิติรายสัปดาห์ (ปีนี้)</div>
+    <div class="stats-section" style="margin-top:0;">
       <div class="stats-card"><div class="stats-card-title">📈 Profit / Loss</div>
         <div class="stats-row"><span class="stats-key">Gross profit</span><span class="stats-v pos" id="w-gp">$0.00</span></div>
         <div class="stats-row"><span class="stats-key">Gross loss</span><span class="stats-v neg" id="w-gl">$0.00</span></div>
@@ -821,7 +823,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
           <button type="button" id="portSelectorLabel" onclick="event.stopPropagation();openPortSelectorModal()" style="white-space:nowrap;cursor:pointer;padding:3px 10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:5px;color:var(--accent);font-size:11px;font-family:var(--font-main);font-weight:500;">📁 เลือกพอร์ต ▾</button>
-          <button class="btn-sm" onclick="event.stopPropagation();dtResetFilters()" style="padding:2px 7px;">↺ Reset</button>
+          <button class="btn-sm" onclick="event.stopPropagation();dtResetFilters()" style="padding:2px 7px;" title="ล้าง Filter ทั้งหมด">↺ Reset ทั้งหมด</button>
           <span id="dtFilterArrow" style="font-size:10px;color:var(--text-muted);transition:transform .2s;display:inline-block;transform:rotate(0deg);">▼</span>
         </div>
       </div>
@@ -870,7 +872,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div id="dtEqSection" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px 2px;">
         <span style="font-size:9px;font-weight:700;color:var(--text-secondary);letter-spacing:.4px;text-transform:uppercase;">📈 EQUITY CURVE</span>
-        <span id="dtEqVal" style="font-size:10px;font-family:var(--font-mono);font-weight:600;color:#2ecc8a;">+0.00</span>
+        <span id="dtEqVal" style="font-size:10px;font-family:var(--font-mono);font-weight:600;color:#2ecc8a;"></span>
       </div>
       <div style="position:relative;" id="dtEqWrap">
         <canvas id="dtEqCanvas" style="display:block;cursor:crosshair;"></canvas>
@@ -1063,7 +1065,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 <div class="modal-backdrop" id="mDay">
 <div class="modal modal-xl">
   <div class="modal-header">
-    <div><div class="modal-title" id="mDayTitle">April 1, 2026</div><div class="modal-subtitle">Trade details and performance analysis for this day.</div></div>
+    <div><div class="modal-title" id="mDayTitle"></div><div class="modal-subtitle">Trade details and performance analysis for this day.</div></div>
     <button class="modal-close" onclick="closeM('mDay')">✕</button>
   </div>
   <div class="modal-tabs">
@@ -1178,6 +1180,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         <input type="file" id="ndImgFile" accept="image/*" style="display:none;" onchange="ndInsertImgFile(event)">
         <!-- Divider -->
         <div style="flex:1;"></div>
+        <!-- Undo / Redo -->
+        <button onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo (Ctrl+Z)" class="nd-btn" style="font-size:11px;">↩ Undo</button>
+        <button onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo (Ctrl+Y)" class="nd-btn" style="font-size:11px;">↪ Redo</button>
         <!-- Clear -->
         <button onmousedown="ndClearClick(event)" title="ล้างทั้งหมด" class="nd-btn" style="color:var(--red);border-color:rgba(255,77,106,.3);font-size:11px;">✕ Clear</button>
       </div>
@@ -1390,7 +1395,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 
           <!-- Emotional slider for order -->
           <div style="margin-bottom:8px;">
-            <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="oEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - Calm</span></div>
+            <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="oEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - 🙂 Calm</span></div>
             <input type="range" id="oEmoSlider" min="1" max="10" value="5" oninput="updateOrderEmo(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;">
             <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:1px;"><span>😡 1</span><span>😊 5</span><span>😎 10</span></div>
           </div>
@@ -1454,7 +1459,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div class="ai-chat" id="aiChat"><div class="ai-msg bot">👋 สวัสดี! ฉันคือ AI Coach<br>กดปุ่มด้านบนหรือพิมพ์คำถามเพื่อวิเคราะห์ข้อมูลการเทรดของคุณได้เลยครับ</div></div>
     <div class="ai-input-row">
       <textarea id="aiInp" placeholder="พิมพ์คำถาม..."></textarea>
-      <button class="btn-primary" onclick="sendChat()" style="align-self:flex-end;height:56px;padding:0 14px;">ส่ง →</button>
+      <button class="btn-primary" onclick="sendChat()" style="align-self:flex-end;height:56px;padding:0 14px;" aria-label="ส่งคำถาม" title="ส่งคำถาม">ส่ง ➤</button>
     </div>
   </div>
 </div>
@@ -1546,7 +1551,7 @@ function doGet(e){
   if(p&amp;&amp;p.action===&#x27;cleanDuplicates&#x27;)   return _json(cleanDuplicates());
   if(p&amp;&amp;p.action===&#x27;clearAllDataTrades&#x27;)  return _json(clearAllDataTrades(p));
   if(p&amp;&amp;p.action===&#x27;deduplicateDataTrades&#x27;) return _json(deduplicateDataTrades(p));
-  return _json({status:&#x27;ready&#x27;,version:&#x27;5.1&#x27;,time:new Date().toISOString()});
+  return _json({status:'ready',version:'5.2',time:new Date().toISOString()});
 }
 function loadAll(){
   try{
@@ -1745,7 +1750,13 @@ function loadPortfolios(){
         }
       }
     });
-    if(!ports[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
+    // L-3 fix: ตรวจ DeletedPorts sheet ก่อนสร้าง default — ป้องกัน default เด้งกลับ
+    var _dpSh2=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.DELETED_PORTS);
+    var _dpDeleted2={};
+    if(_dpSh2&&_dpSh2.getLastRow()>1){
+      _dpSh2.getRange(2,1,_dpSh2.getLastRow()-1,1).getValues().forEach(function(r){if(r[0])_dpDeleted2[String(r[0]).trim()]=true;});
+    }
+    if(!ports[&#x27;default&#x27;]&&!_dpDeleted2[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
     _log(&#x27;loadPortfolios&#x27;,&#x27;count=&#x27;+Object.keys(ports).length,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
     return {status:&#x27;ok&#x27;,portfolios:ports};
   }catch(e){
@@ -1825,15 +1836,16 @@ function saveSettings(d){
 function saveDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var id=String(d._id||d.id||Date.now());
+  // HDR.DATA_TRADES order: ID,Date,Portfolio,Session,Asset,Side,Entry,Close,TP,SL,FiboLevel,
+  // PnL($),Fees($),Commission($),Result,Risk,MaxRR,Lots,EntryTime,Duration,SetupDuration,TimeInPos,
+  // SetupClass,Candle,Code,Mode,TF,ZoneMit,Zone,Confirm,Emotion,Discipline,Note,ImageLink,UpdatedAt
   var row=[
     id, d.date||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
-    d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;, d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;,
-    d.mode||&#x27;&#x27;, d.code||&#x27;&#x27;, d.tf||&#x27;&#x27;, d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;,
-    d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
+    d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;,
     d.entry||&#x27;&#x27;, d.close||&#x27;&#x27;, d.tp||&#x27;&#x27;, d.sl||&#x27;&#x27;, d.fiboLevel||&#x27;&#x27;,
     parseFloat(d.pnl)||0, parseFloat(d.fees)||0, parseFloat(d.commission)||0,
     d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, d.lots||&#x27;&#x27;,
-    d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||d.timeInPos||&#x27;&#x27;,
+    d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||&#x27;&#x27;,
     d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;, d.code||&#x27;&#x27;, d.mode||&#x27;&#x27;, d.tf||&#x27;&#x27;,
     d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
     d.emo||d.emotion||5, d.disc||d.discipline||5,
@@ -1858,9 +1870,7 @@ function batchSaveDataTrades(d){
     var pnl=parseFloat(t.pnl)||0;
     var row=[
       id, t.date||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
-      t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;, t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
-      t.mode||&#x27;&#x27;, t.code||&#x27;&#x27;, t.tf||&#x27;&#x27;, t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;,
-      t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
+      t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;,
       t.entry||&#x27;&#x27;, t.close||&#x27;&#x27;, t.tp||&#x27;&#x27;, t.sl||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.lots||&#x27;&#x27;,
@@ -1941,14 +1951,17 @@ function batchSaveTrades(d){
   trades.forEach(function(t){
     var id=String(t.id||Date.now()+Math.random());
     var pnl=parseFloat(t.pnl)||0;
+    // TRADE_FIELD_NAMES order: ID,Date,Portfolio,Asset,Side,Lots,Entry,Close,TP,SL,FiboLevel,
+    // PnL($),Fees($),Commission($),Result,Risk,MaxRR,TimeInPos,SetupDuration,EntryDateTime,CloseDateTime,
+    // SetupClass,Candle,Code,Mode,Timeframe,Trend,Zone,Confirm,Sessions,Emotion,Discipline,Note,ImageLink,UpdatedAt
     var row=[
       id, t.date||&#x27;&#x27;, t.portfolio||&#x27;default&#x27;,
       t.asset||&#x27;&#x27;, t.side||&#x27;&#x27;, parseFloat(t.lots)||0,
       parseFloat(t.entry)||0, parseFloat(t.close)||0,
-      parseFloat(t.tp)||0, parseFloat(t.sl)||0,
+      parseFloat(t.tp)||0, parseFloat(t.sl)||0, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
-      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
+      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;,
       t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
       t.trend||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;, t.sessions||&#x27;&#x27;,
       t.emotion||&#x27;&#x27;, t.discipline||&#x27;&#x27;,
@@ -2193,7 +2206,7 @@ function _log(action,detail,portfolio,source,result){
   try{
     var sh=_sheet(SHEET.LOG,HDR.LOG);
     sh.appendRow([_now(),action,(detail||&#x27;&#x27;).toString().substring(0,300),portfolio||&#x27;&#x27;,source||&#x27;&#x27;,result||&#x27;ok&#x27;]);
-    if(sh.getLastRow()&gt;2001) sh.deleteRow(2);
+    if(sh.getLastRow()&gt;5001) sh.deleteRow(2);
     var row=sh.getLastRow();
     var bg=result===&#x27;ok&#x27;?&#x27;#0d2211&#x27;:result===&#x27;error&#x27;||result===&#x27;not_found&#x27;?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;;
     sh.getRange(row,1,1,6).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(9);
@@ -2384,8 +2397,8 @@ function clearLog(){
         </optgroup>
         <optgroup label="─── 💰 Paid ───">
           <option value="claude-opus-4-5">claude-opus-4-5 👁💰 — แม่นสุด $15/$75 per 1M</option>
-          <option value="claude-opus-4-6">claude-opus-4-6 👁💰 — Flagship ล่าสุด $5/$25 per 1M</option>
-          <option value="claude-sonnet-4-6">claude-sonnet-4-6 👁💰 — ล่าสุด balanced $3/$15 per 1M</option>
+          <option value="claude-opus-4-5-20251101">claude-opus-4-5 👁💰 — Flagship $15/$75 per 1M</option>
+          <option value="claude-sonnet-4-5-20251101">claude-sonnet-4-5 (v2) 👁💰 — balanced $3/$15 per 1M</option>
           <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 👁💰 — Stable $1/$5 per 1M</option>
         </optgroup>
       </select>
@@ -2395,6 +2408,7 @@ function clearLog(){
         <div>⭐ <strong>Sonnet 4.5/4.6</strong> — $3 / $15 — <span style="color:var(--amber);">สมดุล แนะนำ</span></div>
         <div>🔴 <strong>Opus 4.5/4.6</strong> — $5–15 / $25–75 — <span style="color:var(--red);">แพงสุด แม่นสุด</span></div>
         <div style="margin-top:3px;color:var(--text-muted);">💡 OCR Screenshot: <strong>Haiku 4.5 ราคาถูก แม่นดีมาก</strong></div>
+        <div style="margin-top:5px;font-size:9px;color:var(--text-muted);">⚠️ ราคาอาจเปลี่ยนแปลง — ตรวจสอบล่าสุดที่ <a href="https://www.anthropic.com/pricing" target="_blank" style="color:var(--accent);">anthropic.com/pricing</a></div>
       </div>
     </div>
 
@@ -2429,6 +2443,7 @@ function clearLog(){
         <div>🟡 <strong>gpt-4o / gpt-4.1</strong> — $2–2.50 / $8–10 — <span style="color:var(--amber);">คุณภาพสูง</span></div>
         <div>🔴 <strong>gpt-4-turbo</strong> — $10 / $30 — <span style="color:var(--red);">แพง ใช้ 4.1 แทน</span></div>
         <div style="margin-top:3px;color:var(--text-muted);">💡 OCR Screenshot: <strong>gpt-4o-mini คุ้มสุด</strong></div>
+        <div style="margin-top:5px;font-size:9px;color:var(--text-muted);">⚠️ ราคาอาจเปลี่ยนแปลง — ตรวจสอบที่ <a href="https://openai.com/pricing" target="_blank" style="color:var(--accent);">openai.com/pricing</a></div>
       </div>
     </div>
 
@@ -2457,8 +2472,8 @@ function clearLog(){
           <option value="gemini-3.1-pro">gemini-3.1-pro 👁💰 — $2/$12 per 1M · Flagship</option>
         </optgroup>
         <optgroup label="─── ⚠️ Deprecated (ปิด 1 มิ.ย. 69) ───">
-          <option value="gemini-2.0-flash">gemini-2.0-flash 👁⚠️ — DEPRECATED</option>
-          <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite 👁⚠️ — DEPRECATED</option>
+          <option value="gemini-2.0-flash" disabled>gemini-2.0-flash 👁⚠️ — DEPRECATED (ปิดแล้ว)</option>
+          <option value="gemini-2.0-flash-lite" disabled>gemini-2.0-flash-lite 👁⚠️ — DEPRECATED (ปิดแล้ว)</option>
           <option value="gemini-1.5-pro">gemini-1.5-pro 👁⚠️ — Legacy</option>
         </optgroup>
       </select>
@@ -2631,6 +2646,11 @@ function _authInit(){
       return;
     }
   }catch(e){}
+
+  // H-2 fix: ซ่อน Google button ถ้าไม่มี GOOGLE_CLIENT_ID
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  var gw2 = document.getElementById('googleSignInWrap');
+  if(!clientId && gw2) gw2.style.display = 'none';
 
   document.getElementById('authOverlay').style.display = 'flex';
   // Init Google One Tap
@@ -6339,7 +6359,7 @@ function testSheet(){
       setConn(false);
     });
 }
-function setConn(ok){var d=document.getElementById('sDot'),t=document.getElementById('sTxt');if(ok){d.classList.add('connected');t.textContent='Connected';t.style.color='var(--green)';loadAssetsFromSheet();}else{d.classList.remove('connected');t.textContent='Offline';t.style.color='var(--text-muted)';}}
+function setConn(ok){var d=document.getElementById('sDot'),t=document.getElementById('sTxt');if(ok){d.classList.add('connected');t.textContent='Connected';t.style.color='var(--green)';loadAssetsFromSheet();}else{d.classList.remove('connected');t.textContent='Local';t.style.color='var(--text-muted)';}}
 // ── Retry queue: ออเดอร์ที่ส่ง Sheet ไม่ได้จะถูก queue ไว้ retry ──
 var _sendQueue=[];
 var _sendRetryTimer=null;
@@ -7357,6 +7377,8 @@ function openShareDashboard(){
     +'<button onclick="document.getElementById(\'shareDashModal\').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;line-height:1;" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--text-muted)\'">✕</button>'
     +'<div style="font-size:14px;font-weight:600;margin-bottom:4px;">🔗 Share Dashboard</div>'
     +'<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">สร้างลิ้งค์แชร์ข้อมูลเทรดของคุณ — ผู้รับสามารถดูข้อมูลแบบ Read-only ได้</div>'
+    // Privacy warning
+    +'<div style="background:rgba(255,77,106,.07);border:1px solid rgba(255,77,106,.25);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:10px;color:var(--red);line-height:1.7;">🔒 <strong>คำเตือนด้านความเป็นส่วนตัว:</strong> ลิ้งค์ที่สร้างจะให้ทุกคนที่มีลิ้งค์ดูข้อมูลการเทรดได้ทั้งหมด ไม่มีรหัสผ่านและไม่มีวันหมดอายุ — แชร์เฉพาะกับคนที่ไว้ใจเท่านั้น</div>'
     // Info row
     +'<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'
     +'<div style="font-size:10px;color:var(--text-muted);margin-bottom:5px;">📊 ข้อมูลที่จะแชร์ (พอร์ต: <strong style="color:var(--accent);">'+portName+'</strong>)</div>'
@@ -10880,7 +10902,7 @@ if(document.readyState==='loading'){
 
       <!-- Emotional Slider -->
       <div style="margin-bottom:8px;">
-        <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="dtEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - Calm</span></div>
+        <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="dtEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - 🙂 Calm</span></div>
         <input type="range" id="dtEmoSlider" min="1" max="10" value="5" oninput="dtUpdateEmo(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;">
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:1px;"><span>😡 1</span><span>😊 5</span><span>😎 10</span></div>
       </div>
@@ -10943,7 +10965,7 @@ if(document.readyState==='loading'){
     <div style="padding:16px 18px;">
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 13px;line-height:1.7;">
         <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, FiboLevel, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
         <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
       </div>
 
@@ -11100,9 +11122,10 @@ if(document.readyState==='loading'){
         </div>
 
         <div class="help-section-title">📝 Code ทั้งหมด — คัดลอกแล้ววางใน Apps Script</div>
+        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:10px 13px;margin-bottom:10px;font-size:11px;color:var(--amber);line-height:1.7;">⚠️ <strong>หมายเหตุ:</strong> Code ในแท็บนี้เป็นเวอร์ชันเก่า (v5.1) — กรุณาใช้ Code เวอร์ชันล่าสุด <strong>v5.2</strong> จากเมนู <span style="background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">⚙ → 🔗 Google Sheet URL → แท็บ Code: v5.2</span> แทน เพื่อรองรับ FiboLevel และ schema ที่ถูกต้อง</div>
         <div style="position:relative;">
-          <div id="helpCodeBlock" class="help-code-block" style="max-height:340px;overflow-y:auto;">/* =========================================
-   TradeLog Pro+ — Google Apps Script v5.1
+          <div id="helpCodeBlock" class="help-code-block" style="max-height:340px;overflow-y:auto;opacity:.7;">/* =========================================
+   TradeLog Pro+ — Google Apps Script v5.1 (เวอร์ชันเก่า — ใช้ v5.2 จาก Settings แทน)
    รองรับ: Portfolio | Data Mode Trades
            Candle | Mode | TF | Trend
            Zone | Confirm | Sessions
@@ -11367,7 +11390,7 @@ function _log(action,detail,portfolio,source,status){
     var ss=SpreadsheetApp.getActiveSpreadsheet();
     var sh=ss.getSheetByName(SHEET.LOG)||ss.insertSheet(SHEET.LOG);
     if(sh.getLastRow()===0) sh.appendRow(['Timestamp','Action','Detail','Portfolio','Source','Status']);
-    if(sh.getLastRow()>2001) sh.deleteRow(2);
+    if(sh.getLastRow()>5001) sh.deleteRow(2);
     sh.appendRow([new Date().toISOString(),action,detail||'',portfolio||'',source||'',status||'']);
   }catch(e){}
 }
@@ -11443,7 +11466,7 @@ function checkDuplicates(){
             <div class="help-step-num" style="background:rgba(168,85,247,.15);color:var(--purple);">2</div>
             <div class="help-step-body">
               <div class="help-step-title">วาง Code และ Run setupSheets()</div>
-              <div class="help-step-desc">ลบ code เดิมทั้งหมดออก → วาง code จากแท็บ <b>📋 Apps Script</b> → กด <span class="help-badge" style="background:var(--green-dim);color:var(--green);">▶ Run</span> (เลือก function: <code>setupSheets</code>) → อนุญาต Permission → รอ Alert "✅ TradeLog Pro+ v5.1 พร้อม!"</div>
+              <div class="help-step-desc">ลบ code เดิมทั้งหมดออก → วาง code จากแท็บ <b>📋 Apps Script</b> → กด <span class="help-badge" style="background:var(--green-dim);color:var(--green);">▶ Run</span> (เลือก function: <code>setupSheets</code>) → อนุญาต Permission → รอ Alert "✅ TradeLog Pro+ v5.2 พร้อม!"</div>
               <div class="help-img-placeholder">📸 วาง Code → Run setupSheets</div>
             </div>
           </div>
