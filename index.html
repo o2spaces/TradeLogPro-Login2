@@ -2,6 +2,9 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeLog Pro+</title>
 <link rel="shortcut icon" type="image/png" href="Icon.png">
@@ -564,7 +567,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div class="auth-title">TradeLog Pro+</div>
     <div class="auth-sub">กรุณาเข้าสู่ระบบเพื่อใช้งาน</div>
     <div id="authErr" class="auth-err"></div>
-    <div id="authNoUrl" class="auth-no-url" style="display:none;">⚠️ ระบบยังไม่ได้ตั้งค่า กรุณา Deploy Auth Script และตั้งค่า <code style="font-size:10px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;">AUTH_GAS_URL</code> ใน <code style="font-size:10px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;">config.js</code></div>
+    <div id="authNoUrl" class="auth-no-url" style="display:none;cursor:pointer;" onclick="this.style.display='none'" title="คลิกเพื่อปิด">⚠️ ระบบยังไม่ได้ตั้งค่า AUTH_GAS_URL ใน config.js กรุณาติดต่อ Admin<span style="float:right;margin-left:8px;">✕</span></div>
 
     <!-- Google Sign-In Button -->
     <div id="googleSignInWrap" style="margin-bottom:4px;">
@@ -640,8 +643,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         <div id="dataToggleThumb" style="position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-muted);transition:all .2s;"></div>
       </div>
     </div>
-    <div class="sheet-status"><div class="status-dot" id="sDot"></div><span id="sTxt">Local</span></div>
-    <button class="btn-icon" onclick="toggleTheme()" title="สลับ Dark / Light Mode" aria-label="สลับธีม">◑</button>
+    <div class="sheet-status"><div class="status-dot" id="sDot"></div><span id="sTxt">Offline</span></div>
+    <button class="btn-icon" onclick="toggleTheme()" title="สลับธีม Dark/Light" aria-label="Toggle theme">◑</button>
     <div id="userChip" class="user-chip" style="display:none;">
       <div class="user-avatar" id="userAvatar">?</div>
       <span id="userDisplayName" style="color:var(--text-primary);font-weight:500;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -651,7 +654,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <button class="btn-icon" id="logoutBtn" title="ออกจากระบบ" onclick="authLogout()"
       style="display:none;" >🚪</button>
     <div style="position:relative;">
-      <button class="btn-icon" id="menuBtn" onclick="toggleMenu(event)" title="เมนูตั้งค่า" aria-label="เมนูตั้งค่า">⚙</button>
+      <button class="btn-icon" id="menuBtn" onclick="toggleMenu(event)">⚙</button>
       <div id="dropMenu" style="display:none;position:absolute;right:0;top:35px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);min-width:215px;z-index:300;overflow:hidden;">
         <div style="padding:5px 0;">
           <div class="drop-cat">ไฟล์</div>
@@ -695,7 +698,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
   <div class="nav-item active" id="navDaily" onclick="switchView('daily')">📅 Daily Calendar</div>
   <div class="nav-item" id="navWeekly" onclick="switchView('weekly')">📊 Weekly View</div>
   <div class="nav-item" id="navData" onclick="dtToggleDataPanel()" style="color:var(--purple);">🗃 Data Mode</div>
-  <div class="nav-item" onclick="openAI()">🤖 AI Coach</div>
+  <div class="nav-item" onclick="openAI()" role="button" aria-label="Open AI Coach">🤖 AI Coach</div>
   <div class="sidebar-divider"></div>
   <div class="section-label">Statistics</div>
   <div class="stat-mini">
@@ -728,7 +731,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
       </div>
     </div>
     <div class="calendar-grid" id="calGrid"></div>
-    <div style="font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;padding:0 2px;">📅 สถิติรายเดือน</div>
     <div class="stats-section">
       <div class="stats-card"><div class="stats-card-title">📈 Profit / Loss</div>
         <div class="stats-row"><span class="stats-key">Gross profit</span><span class="stats-v pos" id="d-gp">$0.00</span></div>
@@ -768,8 +770,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
       </div>
     </div>
     <div class="weekly-grid-container"><div id="weeklyGrid"></div></div>
-    <div style="font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;padding:0 2px;">📊 สถิติรายสัปดาห์ (ปีนี้)</div>
-    <div class="stats-section" style="margin-top:0;">
+    <div class="stats-section" style="margin-top:12px;">
       <div class="stats-card"><div class="stats-card-title">📈 Profit / Loss</div>
         <div class="stats-row"><span class="stats-key">Gross profit</span><span class="stats-v pos" id="w-gp">$0.00</span></div>
         <div class="stats-row"><span class="stats-key">Gross loss</span><span class="stats-v neg" id="w-gl">$0.00</span></div>
@@ -823,7 +824,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
           <button type="button" id="portSelectorLabel" onclick="event.stopPropagation();openPortSelectorModal()" style="white-space:nowrap;cursor:pointer;padding:3px 10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:5px;color:var(--accent);font-size:11px;font-family:var(--font-main);font-weight:500;">📁 เลือกพอร์ต ▾</button>
-          <button class="btn-sm" onclick="event.stopPropagation();dtResetFilters()" style="padding:2px 7px;" title="ล้าง Filter ทั้งหมด">↺ Reset ทั้งหมด</button>
+          <button class="btn-sm" onclick="event.stopPropagation();dtResetFilters()" style="padding:2px 7px;">↺ Reset</button>
           <span id="dtFilterArrow" style="font-size:10px;color:var(--text-muted);transition:transform .2s;display:inline-block;transform:rotate(0deg);">▼</span>
         </div>
       </div>
@@ -872,7 +873,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div id="dtEqSection" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px 2px;">
         <span style="font-size:9px;font-weight:700;color:var(--text-secondary);letter-spacing:.4px;text-transform:uppercase;">📈 EQUITY CURVE</span>
-        <span id="dtEqVal" style="font-size:10px;font-family:var(--font-mono);font-weight:600;color:#2ecc8a;"></span>
+        <span id="dtEqVal" style="font-size:10px;font-family:var(--font-mono);font-weight:600;color:#2ecc8a;display:none;">+0.00</span>
       </div>
       <div style="position:relative;" id="dtEqWrap">
         <canvas id="dtEqCanvas" style="display:block;cursor:crosshair;"></canvas>
@@ -1065,7 +1066,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 <div class="modal-backdrop" id="mDay">
 <div class="modal modal-xl">
   <div class="modal-header">
-    <div><div class="modal-title" id="mDayTitle"></div><div class="modal-subtitle">Trade details and performance analysis for this day.</div></div>
+    <div><div class="modal-title" id="mDayTitle">—</div><div class="modal-subtitle" id="mDaySubtitle">Trade details and performance analysis for this day.</div></div>
     <button class="modal-close" onclick="closeM('mDay')">✕</button>
   </div>
   <div class="modal-tabs">
@@ -1180,9 +1181,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
         <input type="file" id="ndImgFile" accept="image/*" style="display:none;" onchange="ndInsertImgFile(event)">
         <!-- Divider -->
         <div style="flex:1;"></div>
-        <!-- Undo / Redo -->
-        <button onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo (Ctrl+Z)" class="nd-btn" style="font-size:11px;">↩ Undo</button>
-        <button onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo (Ctrl+Y)" class="nd-btn" style="font-size:11px;">↪ Redo</button>
         <!-- Clear -->
         <button onmousedown="ndClearClick(event)" title="ล้างทั้งหมด" class="nd-btn" style="color:var(--red);border-color:rgba(255,77,106,.3);font-size:11px;">✕ Clear</button>
       </div>
@@ -1395,7 +1393,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 
           <!-- Emotional slider for order -->
           <div style="margin-bottom:8px;">
-            <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="oEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - 🙂 Calm</span></div>
+            <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="oEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - Calm</span></div>
             <input type="range" id="oEmoSlider" min="1" max="10" value="5" oninput="updateOrderEmo(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;">
             <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:1px;"><span>😡 1</span><span>😊 5</span><span>😎 10</span></div>
           </div>
@@ -1459,7 +1457,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div class="ai-chat" id="aiChat"><div class="ai-msg bot">👋 สวัสดี! ฉันคือ AI Coach<br>กดปุ่มด้านบนหรือพิมพ์คำถามเพื่อวิเคราะห์ข้อมูลการเทรดของคุณได้เลยครับ</div></div>
     <div class="ai-input-row">
       <textarea id="aiInp" placeholder="พิมพ์คำถาม..."></textarea>
-      <button class="btn-primary" onclick="sendChat()" style="align-self:flex-end;height:56px;padding:0 14px;" aria-label="ส่งคำถาม" title="ส่งคำถาม">ส่ง ➤</button>
+      <button class="btn-primary" onclick="sendChat()" style="align-self:flex-end;height:56px;padding:0 14px;">ส่ง →</button>
     </div>
   </div>
 </div>
@@ -1551,7 +1549,7 @@ function doGet(e){
   if(p&amp;&amp;p.action===&#x27;cleanDuplicates&#x27;)   return _json(cleanDuplicates());
   if(p&amp;&amp;p.action===&#x27;clearAllDataTrades&#x27;)  return _json(clearAllDataTrades(p));
   if(p&amp;&amp;p.action===&#x27;deduplicateDataTrades&#x27;) return _json(deduplicateDataTrades(p));
-  return _json({status:'ready',version:'5.2',time:new Date().toISOString()});
+  return _json({status:&#x27;ready&#x27;,version:&#x27;5.2&#x27;,time:new Date().toISOString()});
 }
 function loadAll(){
   try{
@@ -1750,13 +1748,7 @@ function loadPortfolios(){
         }
       }
     });
-    // L-3 fix: ตรวจ DeletedPorts sheet ก่อนสร้าง default — ป้องกัน default เด้งกลับ
-    var _dpSh2=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.DELETED_PORTS);
-    var _dpDeleted2={};
-    if(_dpSh2&&_dpSh2.getLastRow()>1){
-      _dpSh2.getRange(2,1,_dpSh2.getLastRow()-1,1).getValues().forEach(function(r){if(r[0])_dpDeleted2[String(r[0]).trim()]=true;});
-    }
-    if(!ports[&#x27;default&#x27;]&&!_dpDeleted2[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
+    if(!ports[&#x27;default&#x27;]) ports[&#x27;default&#x27;]={name:&#x27;Default&#x27;,balance:0,fund:&#x27;&#x27;};
     _log(&#x27;loadPortfolios&#x27;,&#x27;count=&#x27;+Object.keys(ports).length,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
     return {status:&#x27;ok&#x27;,portfolios:ports};
   }catch(e){
@@ -1836,15 +1828,12 @@ function saveSettings(d){
 function saveDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var id=String(d._id||d.id||Date.now());
-  // HDR.DATA_TRADES order: ID,Date,Portfolio,Session,Asset,Side,Entry,Close,TP,SL,FiboLevel,
-  // PnL($),Fees($),Commission($),Result,Risk,MaxRR,Lots,EntryTime,Duration,SetupDuration,TimeInPos,
-  // SetupClass,Candle,Code,Mode,TF,ZoneMit,Zone,Confirm,Emotion,Discipline,Note,ImageLink,UpdatedAt
   var row=[
     id, d.date||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
     d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;,
     d.entry||&#x27;&#x27;, d.close||&#x27;&#x27;, d.tp||&#x27;&#x27;, d.sl||&#x27;&#x27;, d.fiboLevel||&#x27;&#x27;,
     parseFloat(d.pnl)||0, parseFloat(d.fees)||0, parseFloat(d.commission)||0,
-    d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, d.lots||&#x27;&#x27;,
+    d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, parseFloat(d.lots)||0,
     d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||&#x27;&#x27;,
     d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;, d.code||&#x27;&#x27;, d.mode||&#x27;&#x27;, d.tf||&#x27;&#x27;,
     d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
@@ -1870,7 +1859,9 @@ function batchSaveDataTrades(d){
     var pnl=parseFloat(t.pnl)||0;
     var row=[
       id, t.date||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
-      t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;,
+      t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;, t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
+      t.mode||&#x27;&#x27;, t.code||&#x27;&#x27;, t.tf||&#x27;&#x27;, t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;,
+      t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
       t.entry||&#x27;&#x27;, t.close||&#x27;&#x27;, t.tp||&#x27;&#x27;, t.sl||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.lots||&#x27;&#x27;,
@@ -1951,17 +1942,14 @@ function batchSaveTrades(d){
   trades.forEach(function(t){
     var id=String(t.id||Date.now()+Math.random());
     var pnl=parseFloat(t.pnl)||0;
-    // TRADE_FIELD_NAMES order: ID,Date,Portfolio,Asset,Side,Lots,Entry,Close,TP,SL,FiboLevel,
-    // PnL($),Fees($),Commission($),Result,Risk,MaxRR,TimeInPos,SetupDuration,EntryDateTime,CloseDateTime,
-    // SetupClass,Candle,Code,Mode,Timeframe,Trend,Zone,Confirm,Sessions,Emotion,Discipline,Note,ImageLink,UpdatedAt
     var row=[
       id, t.date||&#x27;&#x27;, t.portfolio||&#x27;default&#x27;,
       t.asset||&#x27;&#x27;, t.side||&#x27;&#x27;, parseFloat(t.lots)||0,
       parseFloat(t.entry)||0, parseFloat(t.close)||0,
-      parseFloat(t.tp)||0, parseFloat(t.sl)||0, t.fiboLevel||&#x27;&#x27;,
+      parseFloat(t.tp)||0, parseFloat(t.sl)||0,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
-      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;,
+      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
       t.trend||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;, t.sessions||&#x27;&#x27;,
       t.emotion||&#x27;&#x27;, t.discipline||&#x27;&#x27;,
@@ -2206,7 +2194,7 @@ function _log(action,detail,portfolio,source,result){
   try{
     var sh=_sheet(SHEET.LOG,HDR.LOG);
     sh.appendRow([_now(),action,(detail||&#x27;&#x27;).toString().substring(0,300),portfolio||&#x27;&#x27;,source||&#x27;&#x27;,result||&#x27;ok&#x27;]);
-    if(sh.getLastRow()&gt;5001) sh.deleteRow(2);
+    if(sh.getLastRow()&gt;2001) sh.deleteRow(2);
     var row=sh.getLastRow();
     var bg=result===&#x27;ok&#x27;?&#x27;#0d2211&#x27;:result===&#x27;error&#x27;||result===&#x27;not_found&#x27;?&#x27;#2e1a1f&#x27;:&#x27;#1a1c26&#x27;;
     sh.getRange(row,1,1,6).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(9);
@@ -2392,13 +2380,13 @@ function clearLog(){
       <div class="field-label" style="margin-top:9px;">Model <span style="font-size:9px;color:var(--text-muted);">(👁 ทุกตัวอ่านรูปได้)</span></div>
       <select class="settings-input" id="mAnt" style="font-family:var(--font-main);">
         <optgroup label="─── ⭐ แนะนำ ───">
-          <option value="claude-sonnet-4-5" selected>⭐#1 claude-sonnet-4-5 👁💰 — สมดุลดีที่สุด $3/$15 per 1M</option>
-          <option value="claude-haiku-4-5">⭐#2 claude-haiku-4-5 👁💰 — เร็ว+ถูก $1/$5 per 1M OCR ดี</option>
+          <option value="claude-sonnet-4-5">claude-sonnet-4-5 👁💰 — $3/$15 per 1M</option>
+          <option value="claude-haiku-4-5">⭐#2 claude-haiku-4-5 👁💰 — เร็ว ถูก OCR ดี</option>
         </optgroup>
         <optgroup label="─── 💰 Paid ───">
           <option value="claude-opus-4-5">claude-opus-4-5 👁💰 — แม่นสุด $15/$75 per 1M</option>
-          <option value="claude-opus-4-5-20251101">claude-opus-4-5 👁💰 — Flagship $15/$75 per 1M</option>
-          <option value="claude-sonnet-4-5-20251101">claude-sonnet-4-5 (v2) 👁💰 — balanced $3/$15 per 1M</option>
+          <option value="claude-opus-4-6">claude-opus-4-6 👁💰 — Flagship ล่าสุด $5/$25 per 1M</option>
+          <option value="claude-sonnet-4-6" selected>⭐#1 claude-sonnet-4-6 👁💰 — ล่าสุด balanced $3/$15 per 1M</option>
           <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 👁💰 — Stable $1/$5 per 1M</option>
         </optgroup>
       </select>
@@ -2408,7 +2396,6 @@ function clearLog(){
         <div>⭐ <strong>Sonnet 4.5/4.6</strong> — $3 / $15 — <span style="color:var(--amber);">สมดุล แนะนำ</span></div>
         <div>🔴 <strong>Opus 4.5/4.6</strong> — $5–15 / $25–75 — <span style="color:var(--red);">แพงสุด แม่นสุด</span></div>
         <div style="margin-top:3px;color:var(--text-muted);">💡 OCR Screenshot: <strong>Haiku 4.5 ราคาถูก แม่นดีมาก</strong></div>
-        <div style="margin-top:5px;font-size:9px;color:var(--text-muted);">⚠️ ราคาอาจเปลี่ยนแปลง — ตรวจสอบล่าสุดที่ <a href="https://www.anthropic.com/pricing" target="_blank" style="color:var(--accent);">anthropic.com/pricing</a></div>
       </div>
     </div>
 
@@ -2443,7 +2430,6 @@ function clearLog(){
         <div>🟡 <strong>gpt-4o / gpt-4.1</strong> — $2–2.50 / $8–10 — <span style="color:var(--amber);">คุณภาพสูง</span></div>
         <div>🔴 <strong>gpt-4-turbo</strong> — $10 / $30 — <span style="color:var(--red);">แพง ใช้ 4.1 แทน</span></div>
         <div style="margin-top:3px;color:var(--text-muted);">💡 OCR Screenshot: <strong>gpt-4o-mini คุ้มสุด</strong></div>
-        <div style="margin-top:5px;font-size:9px;color:var(--text-muted);">⚠️ ราคาอาจเปลี่ยนแปลง — ตรวจสอบที่ <a href="https://openai.com/pricing" target="_blank" style="color:var(--accent);">openai.com/pricing</a></div>
       </div>
     </div>
 
@@ -2472,8 +2458,8 @@ function clearLog(){
           <option value="gemini-3.1-pro">gemini-3.1-pro 👁💰 — $2/$12 per 1M · Flagship</option>
         </optgroup>
         <optgroup label="─── ⚠️ Deprecated (ปิด 1 มิ.ย. 69) ───">
-          <option value="gemini-2.0-flash" disabled>gemini-2.0-flash 👁⚠️ — DEPRECATED (ปิดแล้ว)</option>
-          <option value="gemini-2.0-flash-lite" disabled>gemini-2.0-flash-lite 👁⚠️ — DEPRECATED (ปิดแล้ว)</option>
+          <option value="gemini-2.0-flash" disabled>gemini-2.0-flash — DEPRECATED (ถูกลบแล้ว)</option>
+          <option value="gemini-2.0-flash-lite" disabled>gemini-2.0-flash-lite — DEPRECATED (ถูกลบแล้ว)</option>
           <option value="gemini-1.5-pro">gemini-1.5-pro 👁⚠️ — Legacy</option>
         </optgroup>
       </select>
@@ -2625,6 +2611,9 @@ function _authInit(){
     document.getElementById('authNoUrl').style.display = 'block';
     document.getElementById('authBtn').disabled = true;
     document.getElementById('authBtn').textContent = '⚠️ ระบบยังไม่พร้อม';
+    // ซ่อน Google button ถ้า AUTH_GAS_URL ไม่มี
+    var gw2 = document.getElementById('googleSignInWrap');
+    if(gw2) gw2.style.display = 'none';
     var gw = document.getElementById('googleSignInWrap');
     if(gw) gw.style.display = 'none';
     document.getElementById('authOverlay').style.display = 'flex';
@@ -2639,7 +2628,7 @@ function _authInit(){
       _authApply(saved);
       document.getElementById('authOverlay').style.display = 'none';
       // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
-      var localUrl = localStorage.getItem('tj_url') || '';
+      var localUrl = lsGet('tj_url') || '';
       if(!saved.scriptUrl && !localUrl){
         _showSetupSheetOverlay();
       }
@@ -2647,131 +2636,192 @@ function _authInit(){
     }
   }catch(e){}
 
-  // H-2 fix: ซ่อน Google button ถ้าไม่มี GOOGLE_CLIENT_ID
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  var gw2 = document.getElementById('googleSignInWrap');
-  if(!clientId && gw2) gw2.style.display = 'none';
-
   document.getElementById('authOverlay').style.display = 'flex';
   // Init Google One Tap
   _initGoogleOneTap(url);
 }
 
-// ── Google Sign-In ─────────────────────────────────────────────
-// ใช้ google.accounts.id.initialize + ux_mode:'popup'
-// — วิธีนี้ trigger จาก button click ได้โดยตรง ไม่ถูก block
-
-var _googleIdInitialized = false;
-
+// ── Google One Tap / Sign-In ───────────────────────────────────
 function _initGoogleOneTap(authUrl){
-  // ไม่ต้อง init ตอนโหลดหน้า — รอให้ user กดปุ่มก่อน
-  // แค่ตรวจว่า GSI library โหลดมาหรือยัง
+  // One Tap ต้องใช้ Google Client ID — ถ้าไม่มีก็ใช้ popup แทน
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(!clientId || !window.google) return;
+  try{
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: function(resp){ _handleGoogleCredential(resp.credential); },
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+    google.accounts.id.prompt();
+  }catch(e){}
 }
 
-function authGoogleSignIn(){
+// Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
+async function authGoogleSignIn(){
+  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
+
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId){
-    showToast('ไม่ได้ตั้งค่า GOOGLE_CLIENT_ID','error'); return;
-  }
-
-  var btn = document.querySelector('.auth-google-btn');
-  if(btn){ btn.disabled = true; btn.style.opacity = '.65'; }
-
-  function _restoreBtn(){ if(btn){ btn.disabled=false; btn.style.opacity='1'; } }
-
-  // รอ GSI library (โหลด async) ถ้ายังไม่พร้อม
-  function _doSignIn(){
-    if(!window.google || !window.google.accounts || !window.google.accounts.id){
-      _restoreBtn();
-      showToast('Google library ยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่','error');
-      return;
+  if(clientId && window.google && google.accounts){
+    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
+    if(google.accounts.oauth2){
+      try{
+        google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile',
+          prompt: 'select_account',
+          callback: function(tokenResp){
+            if(tokenResp && tokenResp.access_token){
+              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
+              }).then(function(r){ return r.json(); })
+                .then(function(info){
+                  var email = (info.email || '').toLowerCase().trim();
+                  var name  = info.name || email;
+                  if(email) _processGoogleLogin(email, name);
+                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
+            }
+          }
+        }).requestAccessToken();
+        return;
+      }catch(e){}
     }
+    // fallback: One Tap popup mode
     try{
-      // initialize ทุกครั้งที่กด เพื่อให้ prompt ขึ้นใหม่ได้
       google.accounts.id.initialize({
         client_id: clientId,
-        callback: function(resp){
-          _restoreBtn();
-          if(resp && resp.credential){
-            _handleGoogleCredential(resp.credential);
-          } else {
-            showToast('Google Sign-In ถูกยกเลิก','error');
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-        ux_mode: 'popup',
-        context: 'signin'
+        callback: function(resp){ _handleGoogleCredential(resp.credential); },
+        ux_mode: 'popup'
       });
-
-      // prompt เปิด account chooser popup
       google.accounts.id.prompt(function(notification){
-        if(notification.isNotDisplayed()){
-          _restoreBtn();
-          // popup ถูก block หรือ browser ไม่รองรับ — fallback Token Client
-          _googleTokenClientFallback(clientId, _restoreBtn);
-        } else if(notification.isSkippedMoment()){
-          _restoreBtn();
+        if(notification.isNotDisplayed() || notification.isSkippedMoment()){
+          _googlePopupFallback();
         }
       });
-    }catch(e){
-      _restoreBtn();
-      showToast('Google Sign-In error: ' + e.message,'error');
-    }
+      return;
+    }catch(e2){}
   }
-
-  if(window.google && window.google.accounts && window.google.accounts.id){
-    _doSignIn();
-  } else {
-    // รอ GSI โหลดเสร็จ max 5s
-    var waited = 0;
-    var iv = setInterval(function(){
-      waited += 200;
-      if(window.google && window.google.accounts && window.google.accounts.id){
-        clearInterval(iv); _doSignIn();
-      } else if(waited >= 5000){
-        clearInterval(iv); _restoreBtn();
-        showToast('Google library โหลดไม่ได้ ตรวจสอบ network แล้วลองใหม่','error');
-      }
-    }, 200);
-  }
+  _googlePopupFallback();
 }
 
-// Fallback: Token Client (ถ้า id.prompt ไม่ทำงาน)
-function _googleTokenClientFallback(clientId, restoreFn){
-  if(!window.google || !google.accounts || !google.accounts.oauth2){
-    if(restoreFn) restoreFn();
-    showToast('ไม่สามารถเปิด Google Sign-In ได้','error'); return;
-  }
-  try{
-    google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'email profile openid',
-      prompt: 'select_account',
-      callback: function(tokenResp){
-        if(restoreFn) restoreFn();
-        if(!tokenResp || !tokenResp.access_token){
-          showToast('Google Sign-In ถูกยกเลิก','error'); return;
-        }
-        fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
-          headers:{ Authorization:'Bearer '+tokenResp.access_token }
-        }).then(function(r){ return r.json(); })
-          .then(function(info){
-            var email=(info.email||'').toLowerCase().trim();
-            var name=info.name||info.given_name||email;
-            if(email) _processGoogleLogin(email, name);
-            else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-          }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
-      },
-      error_callback: function(){ if(restoreFn) restoreFn(); }
-    }).requestAccessToken();
-  }catch(e){
-    if(restoreFn) restoreFn();
-    showToast('Google Sign-In error: '+e.message,'error');
-  }
+function _googlePopupFallback(){
+  // สร้าง account chooser modal แทน window.prompt()
+  _showGoogleAccountChooser();
 }
 
+function _showGoogleAccountChooser(){
+  var hints = [];
+  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
 
+  var existing = document.getElementById('_googleAccChooser');
+  if(existing) existing.remove();
+
+  // Build overlay
+  var overlay = document.createElement('div');
+  overlay.id = '_googleAccChooser';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+
+  // Card
+  var card = document.createElement('div');
+  card.style.cssText = 'background:#1a1e2a;border:1px solid #2a2f3d;border-radius:16px;width:360px;max-width:94vw;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.8);';
+
+  // --- Header ---
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:18px 20px 0;display:flex;align-items:center;gap:10px;';
+
+  var gLogo = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  gLogo.setAttribute('width','22'); gLogo.setAttribute('height','22'); gLogo.setAttribute('viewBox','0 0 18 18');
+  gLogo.innerHTML = '<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>';
+
+  var titleWrap = document.createElement('div');
+  var titleEl = document.createElement('div');
+  titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#f4f6ff;';
+  titleEl.textContent = 'เลือกบัญชี';
+  var subEl = document.createElement('div');
+  subEl.style.cssText = 'font-size:10px;color:#7a8299;';
+  subEl.textContent = 'เพื่อเข้าสู่ TradeLog Pro+';
+  titleWrap.appendChild(titleEl);
+  titleWrap.appendChild(subEl);
+
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:#7a8299;cursor:pointer;font-size:20px;line-height:1;padding:4px 0;';
+  closeBtn.onclick = function(){ overlay.remove(); };
+
+  hdr.appendChild(gLogo);
+  hdr.appendChild(titleWrap);
+  hdr.appendChild(closeBtn);
+  card.appendChild(hdr);
+
+  // --- Account list ---
+  var listWrap = document.createElement('div');
+  listWrap.style.cssText = 'max-height:280px;overflow-y:auto;margin-top:10px;';
+  var colors = ['#4f7aff','#2ecc8a','#f5a623','#a855f7','#22d3ee'];
+
+  hints.forEach(function(h, i){
+    var row = _buildAccRow(h.email, h.name, colors[i % colors.length]);
+    row.onclick = function(){ _selectGoogleAccount(h.email, h.name); };
+    listWrap.appendChild(row);
+  });
+
+  // "Use another account" row
+  var otherRow = document.createElement('div');
+  otherRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;';
+  otherRow.onmouseover = function(){ this.style.background='#252a38'; };
+  otherRow.onmouseout  = function(){ this.style.background='transparent'; };
+
+  var otherIcon = document.createElement('div');
+  otherIcon.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2f3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+  otherIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b0b7cc" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+  var otherLabel = document.createElement('div');
+  otherLabel.style.cssText = 'font-size:13px;color:#b0b7cc;';
+  otherLabel.textContent = 'ใช้บัญชีอื่น';
+  otherRow.appendChild(otherIcon);
+  otherRow.appendChild(otherLabel);
+  otherRow.onclick = _googleManualEntry;
+  listWrap.appendChild(otherRow);
+  card.appendChild(listWrap);
+
+  // --- Manual input box ---
+  var manualBox = document.createElement('div');
+  manualBox.id = '_googleManualBox';
+  manualBox.style.cssText = 'display:none;padding:14px 20px;border-top:1px solid #2a2f3d;';
+
+  var emailLabel = document.createElement('div');
+  emailLabel.style.cssText = 'font-size:11px;color:#7a8299;margin-bottom:6px;';
+  emailLabel.textContent = 'กรอก Gmail ของคุณ';
+
+  var emailInput = document.createElement('input');
+  emailInput.id = '_googleEmailInput';
+  emailInput.type = 'email';
+  emailInput.placeholder = 'example@gmail.com';
+  emailInput.style.cssText = 'width:100%;background:#0f1117;border:1px solid #2a2f3d;color:#f4f6ff;border-radius:6px;padding:8px 11px;font-size:13px;outline:none;box-sizing:border-box;';
+  emailInput.onfocus = function(){ this.style.borderColor='#4f7aff'; };
+  emailInput.onblur  = function(){ this.style.borderColor='#2a2f3d'; };
+  emailInput.onkeydown = function(e){ if(e.key==='Enter') _googleManualSubmit(); };
+
+  var submitBtn = document.createElement('button');
+  submitBtn.textContent = 'ถัดไป';
+  submitBtn.style.cssText = 'width:100%;margin-top:8px;background:#4f7aff;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;';
+  submitBtn.onclick = _googleManualSubmit;
+
+  manualBox.appendChild(emailLabel);
+  manualBox.appendChild(emailInput);
+  manualBox.appendChild(submitBtn);
+  card.appendChild(manualBox);
+
+  // --- Footer note ---
+  var footer = document.createElement('div');
+  footer.style.cssText = 'padding:10px 20px;border-top:1px solid #2a2f3d;font-size:10px;color:#7a8299;text-align:center;';
+  footer.textContent = 'ระบบจะตรวจสอบ email กับฐานข้อมูลผู้ใช้';
+  card.appendChild(footer);
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
 
 function _buildAccRow(email, name, color){
   var row = document.createElement('div');
@@ -2882,7 +2932,7 @@ async function _processGoogleLogin(email, name){
       _authSession = session;
       if(session.scriptUrl){
         S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
+        lsSet('tj_url', session.scriptUrl);
       }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
@@ -2896,7 +2946,7 @@ async function _processGoogleLogin(email, name){
       }
 
       // ถ้าไม่มี scriptUrl → แสดง setup overlay
-      if(!session.scriptUrl && !localStorage.getItem('tj_url')){
+      if(!session.scriptUrl && !lsGet('tj_url')){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
         setConn(true); syncFromSheet();
@@ -2954,7 +3004,7 @@ async function authDoLogin(){
       _authSession = session;
       if(session.scriptUrl){
         S.scriptUrl = session.scriptUrl;
-        localStorage.setItem('tj_url', session.scriptUrl);
+        lsSet('tj_url', session.scriptUrl);
       }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
@@ -2963,7 +3013,7 @@ async function authDoLogin(){
       showToast('👋 ยินดีต้อนรับ ' + session.displayName + '!', 'success');
 
       // ถ้าไม่มี scriptUrl → แสดง setup overlay
-      var localUrl = localStorage.getItem('tj_url') || '';
+      var localUrl = lsGet('tj_url') || '';
       if(!session.scriptUrl && !localUrl){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
@@ -2990,6 +3040,7 @@ function _authApply(session){
   if(chip)   chip.style.display   = 'flex';
   if(uname)  uname.textContent    = session.displayName || session.username;
   if(avatar) avatar.textContent   = (session.displayName || session.username).charAt(0).toUpperCase();
+  try{ _migrateUserStorage(); }catch(e){}
   if(session.role === 'admin'){
     var ab = document.getElementById('adminBtn');
     if(ab) ab.style.display = '';
@@ -3000,7 +3051,7 @@ function _authApply(session){
   var menuSetup = document.getElementById('menuSetupSheet');
   if(menuSetup) menuSetup.style.display = '';
   // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
-  var urlToUse = session.scriptUrl || localStorage.getItem('tj_url') || '';
+  var urlToUse = session.scriptUrl || lsGet('tj_url') || '';
   if(urlToUse) S.scriptUrl = urlToUse;
 }
 
@@ -3019,7 +3070,7 @@ function _showSetupSheetOverlay(){
   if(ov){ ov.classList.add('open'); }
   // โหลด URL ที่อาจมีใน localStorage แล้ว (ใส่ค้างไว้)
   var inp = document.getElementById('setupSheetUrl');
-  if(inp) inp.value = localStorage.getItem('tj_url') || '';
+  if(inp) inp.value = lsGet('tj_url') || '';
 }
 
 async function setupSheetTest(){
@@ -3064,7 +3115,7 @@ async function setupSheetSave(){
   _clearLocalForNewUrl(url);
   // บันทึกใน localStorage เสมอ
   S.scriptUrl = url;
-  localStorage.setItem('tj_url', url);
+  lsSet('tj_url', url);
 
   // อัปเดต session ใน memory
   if(_authSession){ _authSession.scriptUrl = url; }
@@ -3228,6 +3279,54 @@ var COMM={NQ1:1.00,GC1:1.00,MNQ1:0.50,MGC1:0.50,'XAU/USD':0,EURUSD:0,GBPUSD:0,US
 var TICK_SIZE={MNQ1:0.25,NQ1:0.25,MGC1:0.1,GC1:0.1,'XAU/USD':0.01,EURUSD:0.00001,GBPUSD:0.00001,USDJPY:0.001,BTCUSD:1};
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var MABBR=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+// ══════════════════════════════════════════════════════════════
+//  USER-SCOPED LOCALSTORAGE — ผูก data กับ username
+// ══════════════════════════════════════════════════════════════
+var _LS_GLOBAL = ['tj_session','tj_google_hints'];
+
+function _lsUser(){
+  if(typeof _authSession!=='undefined'&&_authSession&&_authSession.username)
+    return _authSession.username.replace(/[^a-z0-9_.@-]/gi,'_');
+  try{
+    var s=JSON.parse(localStorage.getItem('tj_session')||'null');
+    if(s&&s.username) return s.username.replace(/[^a-z0-9_.@-]/gi,'_');
+  }catch(e){}
+  return '';
+}
+function _lsKey(k){
+  if(_LS_GLOBAL.indexOf(k)>=0) return k;
+  var u=_lsUser(); return u?'u_'+u+'_'+k:k;
+}
+function lsGet(k){ return lsGet(_lsKey(k)); }
+function lsSet(k,v){ return lsSet(_lsKey(k),v); }
+function lsRem(k){ return localStorage.removeItem(_lsKey(k)); }
+
+function _migrateUserStorage(){
+  var u=_lsUser(); if(!u) return;
+  if(localStorage.getItem('_mig_'+u)) return;
+  var keys=['tj_url','tj_k','tj_p','tj_pb','tj_ports','tj_curport',
+    'tj_deleted_ports','tj_custom_sess','tj_strat_list','tj_send_queue',
+    'dt_trades','dt_filters','dt_filter_state','dt_chart_order',
+    'dt_card_widths','dt_chart_rows','dt_row_heights','dt_pageSize',
+    'dt_data_cleared','tj_fund_log'];
+  keys.forEach(function(k){
+    var nk='u_'+u+'_'+k;
+    var v=localStorage.getItem(k);
+    if(v!==null&&localStorage.getItem(nk)===null) localStorage.setItem(nk,v);
+  });
+  for(var i=0;i<localStorage.length;i++){
+    var key=localStorage.key(i); if(!key) continue;
+    if(key.startsWith('port_')||key.startsWith('tj_drop_')||
+       key.startsWith('tj_noteday_')||key.startsWith('tj_deleted_')){
+      var nk2='u_'+u+'_'+key;
+      if(localStorage.getItem(nk2)===null)
+        localStorage.setItem(nk2,lsGet(key));
+    }
+  }
+  localStorage.setItem('_mig_'+u,'1');
+}
+
 var S={sessions:{},trades:{},scriptUrl:'',keys:{mGem:'gemini-2.5-flash-preview-05-20',mGroq:'llama-4-scout-17b-16e-instruct'},prov:'gemini',provBackup:'groq',viewMonth:new Date(),viewYear:new Date().getFullYear(),emo:'😡',side:'Long',mKey:'',mTrades:[],upB64:null,eqChart:null,eqChartW:null,currentPortfolio:'default',portfolios:{}};
 
 // ── สั่ง GAS ล้าง duplicate rows ใน Sheet ──
@@ -3257,14 +3356,14 @@ function cleanLocalDuplicates(){
   portsToClean.forEach(function(pid){
     var key='port_'+pid+'_t';
     var raw={};
-    try{ raw=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
+    try{ raw=JSON.parse(lsGet(key)||'{}'); }catch(e){}
     var cleaned={};
     Object.keys(raw).forEach(function(date){
       var before=(raw[date]||[]).length;
       cleaned[date]=_dedupTrades(raw[date]||[]);
       totalRemoved+=(before-cleaned[date].length);
     });
-    localStorage.setItem(key, JSON.stringify(cleaned));
+    lsSet(key, JSON.stringify(cleaned));
     // อัปเดต S.trades ถ้าเป็น current portfolio
     if(pid===S.currentPortfolio){
       var popupOpen=document.getElementById('mDay')&&document.getElementById('mDay').classList.contains('open');
@@ -3290,10 +3389,10 @@ function clearAndResync(){
   if(!confirm('⚠️ จะล้างข้อมูลทุก Portfolio ใน Browser แล้วดึงจาก Sheet ใหม่ทั้งหมด\nออเดอร์ที่ยังไม่ได้ sync ขึ้น Sheet จะหายไป\n\nดำเนินการต่อ?')) return;
   // ล้าง trade/session data ของทุก portfolio
   Object.keys(S.portfolios).forEach(function(pid){
-    localStorage.removeItem('port_'+pid+'_t');
-    localStorage.removeItem('port_'+pid+'_s');
+    lsRem('port_'+pid+'_t');
+    lsRem('port_'+pid+'_s');
   });
-  localStorage.removeItem('dt_trades');
+  lsRem('dt_trades');
   // reset S.trades / S.sessions
   S.trades = {};
   S.sessions = {};
@@ -3330,17 +3429,17 @@ function syncFromSheet(onDone){
         // Sheet ว่าง → reset local เป็น default เท่านั้น
         var allPids2=Object.keys(S.portfolios||{});
         allPids2.forEach(function(pid){
-          localStorage.removeItem('port_'+pid+'_t');
-          localStorage.removeItem('port_'+pid+'_s');
+          lsRem('port_'+pid+'_t');
+          lsRem('port_'+pid+'_s');
         });
-        localStorage.removeItem('dt_trades');
-        localStorage.removeItem('tj_send_queue');
+        lsRem('dt_trades');
+        lsRem('tj_send_queue');
         _sendQueue=[];
         S.trades={};S.sessions={};
         S.portfolios={'default':{name:'Default',balance:0,fund:''}};
         S.currentPortfolio='default';
-        localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
-        localStorage.setItem('tj_curport','default');
+        lsSet('tj_ports',JSON.stringify(S.portfolios));
+        lsSet('tj_curport','default');
         renderPortfolioBar();
       }
       if(d.portfolios && Object.keys(d.portfolios).length){
@@ -3350,16 +3449,16 @@ function syncFromSheet(onDone){
         allKnownPorts.forEach(function(pid){
           if(!seenPorts[pid]){
             seenPorts[pid]=1;
-            localStorage.removeItem('port_'+pid+'_t');
-            localStorage.removeItem('port_'+pid+'_s');
+            lsRem('port_'+pid+'_t');
+            lsRem('port_'+pid+'_s');
           }
         });
-        localStorage.removeItem('dt_trades');
+        lsRem('dt_trades');
 
         var merged = {};
         // อ่าน tombstone local — filter พอร์ตที่เคยลบออก
         var _localDeleted=[];
-        try{ _localDeleted=JSON.parse(localStorage.getItem('tj_deleted_ports')||'[]'); }catch(e){}
+        try{ _localDeleted=JSON.parse(lsGet('tj_deleted_ports')||'[]'); }catch(e){}
         // รวม tombstone จาก Sheet ด้วย (ถ้า GAS ส่งมา) — ป้องกันกรณี localStorage ถูก clear
         var _sheetDeleted=d._deletedPorts||{};
         // อัปเดต localStorage tombstone จาก Sheet (ซิงค์ tombstone กลับ)
@@ -3367,7 +3466,7 @@ function syncFromSheet(onDone){
         Object.keys(_sheetDeleted).forEach(function(pid){
           if(_localDeleted.indexOf(pid)<0){ _localDeleted.push(pid); _tombstoneUpdated=true; }
         });
-        if(_tombstoneUpdated){ try{ localStorage.setItem('tj_deleted_ports',JSON.stringify(_localDeleted)); }catch(e){} }
+        if(_tombstoneUpdated){ try{ lsSet('tj_deleted_ports',JSON.stringify(_localDeleted)); }catch(e){} }
         Object.keys(d.portfolios).forEach(function(id){
           // ข้ามพอร์ตที่ถูกลบ (ทั้ง local tombstone และ sheet tombstone)
           if(_localDeleted.indexOf(id)>=0 || _sheetDeleted[id]) return;
@@ -3394,10 +3493,10 @@ function syncFromSheet(onDone){
         // ถ้า currentPortfolio ไม่อยู่ใน merged → เปลี่ยนไปพอร์ตแรก
         if(!merged[S.currentPortfolio]){
           S.currentPortfolio = Object.keys(merged)[0] || 'default';
-          localStorage.setItem('tj_curport', S.currentPortfolio);
+          lsSet('tj_curport', S.currentPortfolio);
         }
         S.portfolios = merged;
-        localStorage.setItem('tj_ports', JSON.stringify(S.portfolios));
+        lsSet('tj_ports', JSON.stringify(S.portfolios));
         renderPortfolioBar();
       }
 
@@ -3409,7 +3508,7 @@ function syncFromSheet(onDone){
         // ถ้า Sheet ว่าง (trades=[]) → ล้าง localStorage ทุก portfolio ทันที
         if(!d.trades.length){
           Object.keys(S.portfolios).forEach(function(pid){
-            localStorage.removeItem('port_'+pid+'_t');
+            lsRem('port_'+pid+'_t');
           });
           S.trades = {};
           renderCal(); updateStats(); updateRecent();
@@ -3495,12 +3594,12 @@ function syncFromSheet(onDone){
         var portsFromSheet = Object.keys(byPort);
         portsFromSheet.forEach(function(port){
           var tombstone = {};
-          try{ tombstone = JSON.parse(localStorage.getItem('tj_deleted_'+port)||'{}'); }catch(e){}
+          try{ tombstone = JSON.parse(lsGet('tj_deleted_'+port)||'{}'); }catch(e){}
           var filtered = {};
           Object.keys(byPort[port]).forEach(function(date){
             if(!tombstone[date]){ filtered[date] = _dedupTrades(byPort[port][date]||[]); }
           });
-          localStorage.setItem('port_'+port+'_t', JSON.stringify(filtered));
+          lsSet('port_'+port+'_t', JSON.stringify(filtered));
           if(port === S.currentPortfolio){
             var popupOpen = document.getElementById('mDay') && document.getElementById('mDay').classList.contains('open');
             Object.keys(filtered).forEach(function(date){
@@ -3515,7 +3614,7 @@ function syncFromSheet(onDone){
       // FIX: เช่นเดียวกับ trades — ถ้า Sheet ว่าง ให้ล้าง local sessions ด้วย
       if(d.sessions !== undefined && !d.sessions.length){
         Object.keys(S.portfolios).forEach(function(pid){
-          localStorage.removeItem('port_'+pid+'_s');
+          lsRem('port_'+pid+'_s');
         });
         S.sessions = {};
       }
@@ -3555,10 +3654,10 @@ function syncFromSheet(onDone){
         });
         Object.keys(bySess).forEach(function(port){
           var existing = {};
-          try{ existing = JSON.parse(localStorage.getItem('port_'+port+'_s')||'{}'); }catch(e){}
+          try{ existing = JSON.parse(lsGet('port_'+port+'_s')||'{}'); }catch(e){}
           // โหลด tombstone (วันที่ถูกลบ) เพื่อป้องกัน sheet ดึงกลับมา
           var tombstone = {};
-          try{ tombstone = JSON.parse(localStorage.getItem('tj_deleted_'+port)||'{}'); }catch(e){}
+          try{ tombstone = JSON.parse(lsGet('tj_deleted_'+port)||'{}'); }catch(e){}
           Object.keys(bySess[port]).forEach(function(date){
             // ถ้าวันนี้ถูกลบ (tombstone) → ข้ามไม่นำ sheet data มาแทน
             if(tombstone[date]) return;
@@ -3570,7 +3669,7 @@ function syncFromSheet(onDone){
             sheetSess.notesHistory = sheetNH.length >= localNH.length ? sheetNH : localNH;
             existing[date] = sheetSess;
           });
-          localStorage.setItem('port_'+port+'_s', JSON.stringify(existing));
+          lsSet('port_'+port+'_s', JSON.stringify(existing));
           if(port === S.currentPortfolio){ S.sessions = existing; }
         });
       }
@@ -3673,7 +3772,7 @@ function syncFromSheet(onDone){
         }
         // ── ตรวจ tombstone: ถ้าผู้ใช้เพิ่งกด "ลบทั้งหมด" → ห้าม restore จาก Sheet ──
         // (tombstone จะถูกลบเมื่อ GAS confirm ลบสำเร็จ)
-        var _dtCleared = localStorage.getItem('dt_data_cleared');
+        var _dtCleared = lsGet('dt_data_cleared');
         if(_dtCleared){
           console.log('[sync] dt_data_cleared tombstone active — skip DataTrades restore');
         } else {
@@ -3686,7 +3785,7 @@ function syncFromSheet(onDone){
           });
           if(_dedupDT.length!==newDT.length)
             console.log('[sync] DataTrades: deduped '+(newDT.length-_dedupDT.length)+' rows');
-          localStorage.setItem('dt_trades', JSON.stringify(_dedupDT));
+          lsSet('dt_trades', JSON.stringify(_dedupDT));
         }
       }
 
@@ -3699,7 +3798,7 @@ function syncFromSheet(onDone){
           if(j.date && j.noteHTML){
             var key='tj_noteday_'+(j.portfolio||'default')+'_'+j.date;
             // ใช้ข้อมูลจาก Sheet ถ้า localStorage ว่างอยู่ หรือ Sheet ใหม่กว่า (overwrite เสมอ)
-            localStorage.setItem(key, j.noteHTML);
+            lsSet(key, j.noteHTML);
           }
         });
       }
@@ -3754,21 +3853,25 @@ function _setCalLoadingState(loading){
 function init(){
   _authInit(); // ── ตรวจ session / แสดง login overlay ──
   try{
-    S.sessions=JSON.parse(localStorage.getItem('tj_s')||'{}');
-    S.trades=JSON.parse(localStorage.getItem('tj_t')||'{}');
+    S.sessions=JSON.parse(lsGet('tj_s')||'{}');
+    S.trades=JSON.parse(lsGet('tj_t')||'{}');
     // Priority: session.scriptUrl > localStorage tj_url
-    var localUrl = localStorage.getItem('tj_url') || '';
+    var localUrl = lsGet('tj_url') || '';
     var sessionUrl = (_authSession && _authSession.scriptUrl) ? _authSession.scriptUrl : '';
     S.scriptUrl = sessionUrl || localUrl;
     // ถ้า session มี scriptUrl แต่ localStorage ไม่มี → sync ลง localStorage
-    if(sessionUrl && !localUrl){ localStorage.setItem('tj_url', sessionUrl); }
-    S.keys=JSON.parse(localStorage.getItem('tj_k')||'{}');
-    S.prov=localStorage.getItem('tj_p')||'gemini';
-    S.provBackup=localStorage.getItem('tj_pb')||'groq';
-    S.portfolios=JSON.parse(localStorage.getItem('tj_ports')||'{}');
-    S.currentPortfolio=localStorage.getItem('tj_curport')||'default';
-    var _initDeleted=[]; try{ _initDeleted=JSON.parse(localStorage.getItem('tj_deleted_ports')||'[]'); }catch(e){}
-    if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0) S.portfolios['default']={name:'Default',balance:0,fund:''};
+    if(sessionUrl && !localUrl){ lsSet('tj_url', sessionUrl); }
+    S.keys=JSON.parse(lsGet('tj_k')||'{}');
+    S.prov=lsGet('tj_p')||'gemini';
+    S.provBackup=lsGet('tj_pb')||'groq';
+    S.portfolios=JSON.parse(lsGet('tj_ports')||'{}');
+    S.currentPortfolio=lsGet('tj_curport')||'default';
+    var _initDeleted=[]; try{ _initDeleted=JSON.parse(lsGet('tj_deleted_ports')||'[]'); }catch(e){}
+    // สร้าง Default portfolio เฉพาะ user ใหม่ที่ยังไม่เคยมีข้อมูล
+var _existingPorts=Object.keys(S.portfolios);
+if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0 && _existingPorts.length===0){
+  S.portfolios['default']={name:'Default',balance:0,fund:''};
+}
     // Load current portfolio data
     S.sessions=getPortSessions();
     S.trades=getPortTrades();
@@ -3822,10 +3925,10 @@ function init(){
   });
 }
 function persist(){
-  localStorage.setItem('tj_s',JSON.stringify(S.sessions));
-  localStorage.setItem('tj_t',JSON.stringify(S.trades));
-  localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
-  localStorage.setItem('tj_curport',S.currentPortfolio);
+  lsSet('tj_s',JSON.stringify(S.sessions));
+  lsSet('tj_t',JSON.stringify(S.trades));
+  lsSet('tj_ports',JSON.stringify(S.portfolios));
+  lsSet('tj_curport',S.currentPortfolio);
 }
 
 // ── PORTFOLIO SYSTEM ──
@@ -3836,17 +3939,17 @@ function getPortSessions(){var k='port_'+S.currentPortfolio+'_s';try{return JSON
 function getPortTrades(){
   var k='port_'+S.currentPortfolio+'_t';
   try{
-    var raw=JSON.parse(localStorage.getItem(k)||'{}');
+    var raw=JSON.parse(lsGet(k)||'{}');
     // dedup ทุกวันก่อน return
     Object.keys(raw).forEach(function(date){ raw[date]=_dedupTrades(raw[date]||[]); });
     return raw;
   }catch(e){return {};}
 }
 function persistPort(){
-  localStorage.setItem('port_'+S.currentPortfolio+'_s',JSON.stringify(S.sessions));
-  localStorage.setItem('port_'+S.currentPortfolio+'_t',JSON.stringify(S.trades));
-  localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
-  localStorage.setItem('tj_curport',S.currentPortfolio);
+  lsSet('port_'+S.currentPortfolio+'_s',JSON.stringify(S.sessions));
+  lsSet('port_'+S.currentPortfolio+'_t',JSON.stringify(S.trades));
+  lsSet('tj_ports',JSON.stringify(S.portfolios));
+  lsSet('tj_curport',S.currentPortfolio);
 }
 function switchPortfolio(id){
   if(!S.portfolios[id]) return;
@@ -3856,7 +3959,7 @@ function switchPortfolio(id){
   // update UI
   document.querySelectorAll('.port-tab').forEach(function(t){t.classList.toggle('active',t.dataset.portId===id);});
   updateStats();renderCal();updateRecent();renderTodayOrders();renderPortfolioBar();
-  localStorage.setItem('tj_curport',id);
+  lsSet('tj_curport',id);
   showToast('📁 เปลี่ยนพอร์ต: '+S.portfolios[id].name,'success');
 }
 function renderPortfolioBar(){
@@ -3868,7 +3971,7 @@ function renderPortfolioBar(){
     var p=ports[id];
     var isActive=id===S.currentPortfolio;
     var portTrades={};
-    try{portTrades=JSON.parse(localStorage.getItem('port_'+id+'_t')||'{}');}catch(e){}
+    try{portTrades=JSON.parse(lsGet('port_'+id+'_t')||'{}');}catch(e){}
     var bal=Object.values(portTrades).reduce(function(sum,arr){return sum+arr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);},0);
     var balStr=(bal>=0?'+':'')+'$'+Math.abs(bal).toFixed(2);
     html+='<div class="port-tab'+(isActive?' active':'')+'" data-port-id="'+id+'" onclick="switchPortfolio(\''+id+'\')" ondblclick="event.stopPropagation();inlineRenamePort(\''+id+'\')" title="คลิก=เปลี่ยนพอร์ต | ดับเบิลคลิก=เปลี่ยนชื่อ" style="position:relative;padding-right:22px;">'
@@ -3882,11 +3985,11 @@ function renderPortfolioBar(){
 }
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function getFundList(){
-  var saved=localStorage.getItem('tj_fund_list');
+  var saved=lsGet('tj_fund_list');
   var list=saved?JSON.parse(saved):['Topstep','Lucid','Apex'];
   return list;
 }
-function saveFundList(list){localStorage.setItem('tj_fund_list',JSON.stringify(list));}
+function saveFundList(list){lsSet('tj_fund_list',JSON.stringify(list));}
 function buildFundOptions(selected){
   var list=getFundList();
   var opts=list.map(function(f){return '<option value="'+escHtml(f)+'"'+(f===selected?' selected':'')+'>'+escHtml(f)+'</option>';}).join('');
@@ -3938,11 +4041,11 @@ function confirmAddPortfolio(btn){
   var fund=getFundValue('newPortFundSel','newPortFundCustom');
   var id='port_'+Date.now();
   S.portfolios[id]={name:name,balance:bal,fund:fund};
-  localStorage.setItem('port_'+id+'_s','{}');
-  localStorage.setItem('port_'+id+'_t','{}');
+  lsSet('port_'+id+'_s','{}');
+  lsSet('port_'+id+'_t','{}');
   btn.closest('div[style*=fixed]').remove();
   renderPortfolioBar();
-  localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
+  lsSet('tj_ports',JSON.stringify(S.portfolios));
   showToast('✅ เพิ่มพอร์ต "'+name+'" แล้ว','success');
   if(S.scriptUrl) sendSheet('saveSettings',{key:'portfolio_add',value:'id='+id+' name='+name+' fund='+(fund||'-')});
 }
@@ -3973,7 +4076,7 @@ function confirmEditPortfolio(id,btn){
   S.portfolios[id].fund=getFundValue('editPortFundSel','editPortFundCustom');
   btn.closest('div[style*=fixed]').remove();
   renderPortfolioBar();
-  localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
+  lsSet('tj_ports',JSON.stringify(S.portfolios));
   var saveMsg='✅ อัปเดตพอร์ตแล้ว';
   if(S.scriptUrl){
     sendSheet('saveSettings',{key:'portfolio_edit',value:'id='+id+' name='+name+' balance='+(S.portfolios[id].balance||0)+' fund:'+(S.portfolios[id].fund||'-')});
@@ -3984,13 +4087,13 @@ function confirmEditPortfolio(id,btn){
 function deletePortfolio(id,btn){
   if(!confirm('ลบพอร์ตนี้? ข้อมูลออเดอร์ในพอร์ตนี้จะหายไปด้วย')) return;
   delete S.portfolios[id];
-  localStorage.removeItem('port_'+id+'_s');
-  localStorage.removeItem('port_'+id+'_t');
+  lsRem('port_'+id+'_s');
+  lsRem('port_'+id+'_t');
   // บันทึก tombstone ใน localStorage — ป้องกันพอร์ตเด้งกลับมาหลัง syncFromSheet
   try{
-    var deleted=JSON.parse(localStorage.getItem('tj_deleted_ports')||'[]');
+    var deleted=JSON.parse(lsGet('tj_deleted_ports')||'[]');
     if(deleted.indexOf(id)<0) deleted.push(id);
-    localStorage.setItem('tj_deleted_ports',JSON.stringify(deleted));
+    lsSet('tj_deleted_ports',JSON.stringify(deleted));
   }catch(e){}
   btn.closest('div[style*=fixed]').remove();
   var remaining=Object.keys(S.portfolios);
@@ -3999,7 +4102,7 @@ function deletePortfolio(id,btn){
       switchPortfolio(remaining[0]);
     } else {
       // ถ้าไม่มีพอร์ตเหลือ และ default ก็ถูกลบไปแล้ว → สร้างพอร์ตใหม่ว่างๆ
-      var _delList=[]; try{ _delList=JSON.parse(localStorage.getItem('tj_deleted_ports')||'[]'); }catch(e){}
+      var _delList=[]; try{ _delList=JSON.parse(lsGet('tj_deleted_ports')||'[]'); }catch(e){}
       if(_delList.indexOf('default')>=0){
         // default ถูกลบแล้ว สร้าง port ชื่อ main แทน
         var _newId='port_'+Date.now();
@@ -4012,7 +4115,7 @@ function deletePortfolio(id,btn){
     }
   }
   renderPortfolioBar();
-  localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
+  lsSet('tj_ports',JSON.stringify(S.portfolios));
   if(S.scriptUrl){
     // ส่ง deletePortfolio ไป GAS เพื่อเขียน permanent tombstone ลง DeletedPorts sheet
     sendSheet('deletePortfolio',{portfolio:id});
@@ -4036,7 +4139,7 @@ function inlineRenamePort(id){
     var newName=(inp.value||'').trim();
     if(!newName||newName===oldName){renderPortfolioBar();return;}
     S.portfolios[id].name=newName;
-    localStorage.setItem('tj_ports',JSON.stringify(S.portfolios));
+    lsSet('tj_ports',JSON.stringify(S.portfolios));
     renderPortfolioBar();
     showToast('✅ เปลี่ยนชื่อพอร์ตเป็น "'+newName+'" แล้ว','success');
     if(S.scriptUrl){
@@ -4059,7 +4162,7 @@ var FC_DEFAULT_COMM={NQ1:1.00,MNQ1:0.50,GC1:1.00,MGC1:0.50,'XAU/USD':0};
 
 function fcStorageKey(fund){return 'tj_fc_'+(fund||'default');}
 function loadFCConfig(fund){
-  var saved=localStorage.getItem(fcStorageKey(fund));
+  var saved=lsGet(fcStorageKey(fund));
   if(saved) return JSON.parse(saved);
   // fallback defaults
   var cfg={fees:{},comm:{}};
@@ -4067,7 +4170,7 @@ function loadFCConfig(fund){
   return cfg;
 }
 function saveFCConfig(fund,cfg){
-  localStorage.setItem(fcStorageKey(fund),JSON.stringify(cfg));
+  lsSet(fcStorageKey(fund),JSON.stringify(cfg));
   if(S.scriptUrl) sendSheet('saveSettings',{key:'fees_config_'+fund,value:JSON.stringify(cfg)});
 }
 function getCurrentFund(){
@@ -4155,13 +4258,13 @@ function fcSave(){
 
 // ── FUND LIST MANAGEMENT + LOG ────────────────────────────────
 function getFundLog(){
-  try{ return JSON.parse(localStorage.getItem('tj_fund_log')||'[]'); }catch(e){ return []; }
+  try{ return JSON.parse(lsGet('tj_fund_log')||'[]'); }catch(e){ return []; }
 }
 function pushFundLog(action, fundName){
   var log=getFundLog();
   log.unshift({ts:new Date().toISOString(), action:action, fund:fundName});
   if(log.length>200) log=log.slice(0,200);
-  localStorage.setItem('tj_fund_log', JSON.stringify(log));
+  lsSet('tj_fund_log', JSON.stringify(log));
   if(S.scriptUrl) sendSheet('saveSettings',{key:'fund_'+action, value:'fund='+fundName+' ts='+new Date().toISOString()});
 }
 
@@ -4333,63 +4436,63 @@ function loadDropOptions(){
     if(cur) dtAssetSel.value=cur;
   }
   // Migrate: reset oTrend if it still has old Trend values (Bullish/Bearish/Sideways)
-  var storedOTrend = localStorage.getItem('tj_drop_oTrend');
+  var storedOTrend = lsGet('tj_drop_oTrend');
   if(storedOTrend){
     try{
       var arr=JSON.parse(storedOTrend);
       if(arr.indexOf('Bullish')>=0||arr.indexOf('Bearish')>=0||arr.indexOf('Sideways')>=0){
-        localStorage.removeItem('tj_drop_oTrend');
+        lsRem('tj_drop_oTrend');
       }
     }catch(e){}
   }
   // Migrate: reset dtResult if it has old 'BE' but not 'Miss'
-  var storedDtResult = localStorage.getItem('tj_drop_dtResult');
+  var storedDtResult = lsGet('tj_drop_dtResult');
   if(storedDtResult){
     try{
       var arrR=JSON.parse(storedDtResult);
       if(arrR.indexOf('Miss')<0){
-        localStorage.removeItem('tj_drop_dtResult');
-        localStorage.removeItem('tj_drop_dtfResult');
+        lsRem('tj_drop_dtResult');
+        lsRem('tj_drop_dtfResult');
       }
     }catch(e){}
   }
   // Migrate: reset dtCandle if it doesn't have RBD (wrong order or missing)
-  var storedDtCandle = localStorage.getItem('tj_drop_dtCandle');
+  var storedDtCandle = lsGet('tj_drop_dtCandle');
   if(storedDtCandle){
     try{
       var arrC=JSON.parse(storedDtCandle);
       // Reset if old default had duplicate RBR or missing RBD
       var rbrCount=arrC.filter(function(v){return v==='RBR';}).length;
       if(rbrCount>1 || arrC.indexOf('RBD')<0){
-        localStorage.removeItem('tj_drop_dtCandle');
-        localStorage.removeItem('tj_drop_dtfModel');
+        lsRem('tj_drop_dtCandle');
+        lsRem('tj_drop_dtfModel');
       }
     }catch(e){}
   }
   // Migrate: reset dtfCode if it still has 'Code3'
-  var storedDtfCode = localStorage.getItem('tj_drop_dtfCode');
+  var storedDtfCode = lsGet('tj_drop_dtfCode');
   if(storedDtfCode){
     try{
       var arrCode=JSON.parse(storedDtfCode);
       if(arrCode.indexOf('Code3')>=0){
-        localStorage.removeItem('tj_drop_dtfCode');
-        localStorage.removeItem('tj_drop_dtCode');
+        lsRem('tj_drop_dtfCode');
+        lsRem('tj_drop_dtCode');
       }
     }catch(e){}
   }
   // Migrate: reset dtfMode if it has old 'BE>CHe' or 'BE>BE' without 'Be>Be'
-  var storedDtfMode = localStorage.getItem('tj_drop_dtfMode');
+  var storedDtfMode = lsGet('tj_drop_dtfMode');
   if(storedDtfMode){
     try{
       var arrMode=JSON.parse(storedDtfMode);
       if(arrMode.indexOf('Be>Be')<0){
-        localStorage.removeItem('tj_drop_dtfMode');
-        localStorage.removeItem('tj_drop_dtMode');
+        lsRem('tj_drop_dtfMode');
+        lsRem('tj_drop_dtMode');
       }
     }catch(e){}
   }
   Object.keys(DROP_DEFAULTS).forEach(function(id){
-    var stored = localStorage.getItem('tj_drop_'+id);
+    var stored = lsGet('tj_drop_'+id);
     var opts = stored ? JSON.parse(stored) : DROP_DEFAULTS[id];
     var sel = document.getElementById(id);
     if(!sel) return;
@@ -4440,11 +4543,11 @@ function loadDropOptions(){
 function saveDropOptions(selectId){
   var sel=document.getElementById(selectId); if(!sel) return;
   var opts=Array.from(sel.options).filter(function(o){return o.value!='';}).map(function(o){return o.text;});
-  localStorage.setItem('tj_drop_'+selectId, JSON.stringify(opts));
+  lsSet('tj_drop_'+selectId, JSON.stringify(opts));
   // Sync form dropdown → filter dropdown
   var formToFilter = {dtSession:'dtfSession', dtCode:'dtfCode', dtMode:'dtfMode', dtCandle:'dtfModel', dtResult:'dtfResult'};
   if(formToFilter[selectId]){
-    localStorage.setItem('tj_drop_'+formToFilter[selectId], JSON.stringify(opts));
+    lsSet('tj_drop_'+formToFilter[selectId], JSON.stringify(opts));
     var filterSel = document.getElementById(formToFilter[selectId]);
     if(filterSel){ var cur=filterSel.value; filterSel.innerHTML='<option value="">All</option>'+opts.map(function(v){return '<option'+(v===cur?' selected':'')+'>'+v+'</option>';}).join(''); }
   }
@@ -4452,7 +4555,7 @@ function saveDropOptions(selectId){
   var classSync = {oSetupClass:'dtSetupClass', dtSetupClass:'oSetupClass'};
   if(classSync[selectId]){
     var otherId=classSync[selectId];
-    localStorage.setItem('tj_drop_'+otherId, JSON.stringify(opts));
+    lsSet('tj_drop_'+otherId, JSON.stringify(opts));
     var otherSel=document.getElementById(otherId);
     if(otherSel){
       var curV=otherSel.value;
@@ -4465,7 +4568,7 @@ function saveDropOptions(selectId){
   var orderDataSync = {oCandle:'dtCandle', dtCandle:'oCandle', oCode:'dtCode', dtCode:'oCode', oResultSel:'dtResult', dtResult:'oResultSel'};
   if(orderDataSync[selectId]){
     var syncId=orderDataSync[selectId];
-    localStorage.setItem('tj_drop_'+syncId, JSON.stringify(opts));
+    lsSet('tj_drop_'+syncId, JSON.stringify(opts));
     var syncSel=document.getElementById(syncId);
     if(syncSel){
       var curSV=syncSel.value;
@@ -4476,7 +4579,7 @@ function saveDropOptions(selectId){
   }
   // Sync dtSetupClass <-> dtfClass filter
   if(selectId==='dtSetupClass'||selectId==='oSetupClass'){
-    localStorage.setItem('tj_drop_dtfClass', JSON.stringify(opts));
+    lsSet('tj_drop_dtfClass', JSON.stringify(opts));
     var fcSel=document.getElementById('dtfClass');
     if(fcSel){var cv=fcSel.value;fcSel.innerHTML='<option value="">All</option>'+opts.map(function(v){return '<option'+(v===cv?' selected':'')+'>'+v+'</option>';}).join('');}
   }
@@ -4672,6 +4775,13 @@ function updateStats(){
   var lp=st.total?Math.round(st.longs/st.total*100):0;sv('d-long',lp+'%','pos');sv('d-short',(100-lp)+'%','neg');
   var dp={};Object.keys(S.trades).forEach(function(k){var p=(S.trades[k]||[]).reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);if(p)dp[k]=p;});
   var vals=Object.values(dp);if(vals.length){sv('d-best','$'+Math.max.apply(null,vals).toFixed(2),'pos');sv('d-worst','$'+Math.min.apply(null,vals).toFixed(2),'neg');}
+  // ── Weekly stats (sync from same data) ──
+  sv('w-gp','$'+st.gp.toFixed(2),'pos');sv('w-gl','$'+st.gl.toFixed(2),'neg');
+  sv('w-dd','$'+st.dd.toFixed(2),'neg');
+  sv('w-net',(st.pnl>=0?'+':'')+'$'+st.pnl.toFixed(2),st.pnl>=0?'pos':st.pnl<0?'neg':'neu');
+  sv('w-wr',wr+'%','');sv('w-trd',st.total,'neu');sv('w-wins',st.wins,'pos');sv('w-losses',st.losses,'neg');
+  sv('w-avgw','$'+st.avgW.toFixed(2),'pos');sv('w-avgl','$'+st.avgL.toFixed(2),'neg');
+  sv('w-pf',st.pf>0?st.pf.toFixed(2):'-','');sv('w-days',st.days,'neu');
 }
 function updateWStats(){
   var st=calcSt(allTrades());var wr=st.total?Math.round(st.wins/st.total*100):0;var lp=st.total?Math.round(st.longs/st.total*100):0;
@@ -5663,7 +5773,7 @@ function renderCommentHistory(dateKey){
 
   // 1. ลอง localStorage โดยตรงก่อนเสมอ (source of truth)
   try{
-    var raw=localStorage.getItem('port_'+S.currentPortfolio+'_s');
+    var raw=lsGet('port_'+S.currentPortfolio+'_s');
     if(raw){
       var allSess=JSON.parse(raw);
       var ls=allSess[dateKey]||{};
@@ -5742,7 +5852,7 @@ function deleteNoteHistory(dateKey,idx){
   if(!se.notesHistory) se.notesHistory=[];
   // ดึงจาก localStorage ก่อนเสมอ
   try{
-    var raw=localStorage.getItem('port_'+S.currentPortfolio+'_s');
+    var raw=lsGet('port_'+S.currentPortfolio+'_s');
     if(raw){
       var allSess=JSON.parse(raw);
       if(allSess[dateKey]){
@@ -5772,7 +5882,7 @@ function deleteDay(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
     // ── reset Emotional State slider กลับเป็น default ──
     mEmoSetByIdx(4); setEmoByIdx(4); // Calm
     // ── ลบ Note of Day ออกจาก localStorage ด้วย ──
-    localStorage.removeItem('tj_noteday_'+S.currentPortfolio+'_'+S.mKey);
+    lsRem('tj_noteday_'+S.currentPortfolio+'_'+S.mKey);
     var ndEditor=document.getElementById('noteDayEditor');
     if(ndEditor) ndEditor.innerHTML='';
     var ndLbl=document.getElementById('ndAutoSaveLabel');
@@ -5780,9 +5890,9 @@ function deleteDay(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
     // ── บันทึก tombstone เพื่อป้องกัน sheet ดึงข้อมูลกลับมาหลัง loadAll ──
     try{
       var tbKey='tj_deleted_'+S.currentPortfolio;
-      var tb=JSON.parse(localStorage.getItem(tbKey)||'{}');
+      var tb=JSON.parse(lsGet(tbKey)||'{}');
       tb[S.mKey]=Date.now();
-      localStorage.setItem(tbKey,JSON.stringify(tb));
+      lsSet(tbKey,JSON.stringify(tb));
     }catch(e){}
     persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();closeM('mDay');
     if(S.scriptUrl) sendSheet('deleteDay',{date:S.mKey,portfolio:S.currentPortfolio});
@@ -6142,7 +6252,7 @@ function openAPI(){
     safe('kGem',S.keys['gemini']);
     safe('kGroq',S.keys['groq']);
     safe('kOlla',S.keys['ollama']||'http://localhost:11434');
-    safe('mAnt',S.keys['mAnt']||'claude-sonnet-4-5');
+    safe('mAnt',S.keys['mAnt']||'claude-sonnet-4-6');
     safe('mOAI',S.keys['mOAI']||'gpt-4o-mini');
     safe('mGem',S.keys['mGem']||'gemini-2.5-flash-preview-05-20');
     safe('mGroq',S.keys['mGroq']||'llama-4-scout-17b-16e-instruct');
@@ -6166,9 +6276,9 @@ function saveAPI(){
   var bk=document.querySelector('input[name="bakProv"]:checked');
   if(pr) S.prov=pr.value;
   if(bk) S.provBackup=bk.value;
-  localStorage.setItem('tj_k',JSON.stringify(S.keys));
-  localStorage.setItem('tj_p',S.prov);
-  localStorage.setItem('tj_pb',S.provBackup||'');
+  lsSet('tj_k',JSON.stringify(S.keys));
+  lsSet('tj_p',S.prov);
+  lsSet('tj_pb',S.provBackup||'');
   updateBadge();closeM('mAPI');showToast('🔑 บันทึก API Key แล้ว (Primary:'+S.prov+' | Backup:'+(S.provBackup||'-')+')','success');
   // Log provider/model selection to Sheet (no API keys sent)
   if(S.scriptUrl) sendSheet('saveSettings',{key:'provider',value:'primary='+S.prov+' backup='+(S.provBackup||'-')+' models='+JSON.stringify({ant:S.keys['mAnt'],oai:S.keys['mOAI'],gem:S.keys['mGem'],groq:S.keys['mGroq']})});
@@ -6283,25 +6393,25 @@ function openSheet_onUrlChange(){
 // ── ล้างข้อมูล local ทั้งหมดเมื่อเปลี่ยน Sheet URL ──
 // ป้องกัน: ข้อมูลเก่าหลุดไปใน Sheet ใหม่ + retry queue ส่งข้อมูลเก่า
 function _clearLocalForNewUrl(newUrl){
-  var prevUrl=localStorage.getItem('tj_url')||'';
+  var prevUrl=lsGet('tj_url')||'';
   if(!prevUrl||prevUrl===newUrl) return; // URL เดิม ไม่ต้องล้าง
   console.log('[URL change] clearing local data...');
   // ล้าง cache ทุก portfolio
   try{
     var allPids=Object.keys(S.portfolios||{});
-    var storedPorts=JSON.parse(localStorage.getItem('tj_ports')||'{}');
+    var storedPorts=JSON.parse(lsGet('tj_ports')||'{}');
     allPids=allPids.concat(Object.keys(storedPorts));
     allPids.forEach(function(pid){
-      localStorage.removeItem('port_'+pid+'_t');
-      localStorage.removeItem('port_'+pid+'_s');
+      lsRem('port_'+pid+'_t');
+      lsRem('port_'+pid+'_s');
     });
   }catch(e){}
   // ล้าง data mode + retry queue
-  localStorage.removeItem('dt_trades');
-  localStorage.removeItem('tj_send_queue');
-  localStorage.removeItem('tj_ports');
-  localStorage.removeItem('tj_curport');
-  localStorage.removeItem('tj_deleted_ports');
+  lsRem('dt_trades');
+  lsRem('tj_send_queue');
+  lsRem('tj_ports');
+  lsRem('tj_curport');
+  lsRem('tj_deleted_ports');
   // ล้าง retry queue ใน memory
   _sendQueue=[];
   if(typeof _sendRetryTimer!=='undefined') clearTimeout(_sendRetryTimer);
@@ -6314,7 +6424,7 @@ function saveSheet(){
   if(!url){showToast('กรุณาใส่ URL ก่อน','error');return;}
   _clearLocalForNewUrl(url);
   S.scriptUrl=url;
-  localStorage.setItem('tj_url',url);
+  lsSet('tj_url',url);
   var res=document.getElementById('sheetRes');
   if(res){res.style.color='var(--text-muted)';res.textContent='💾 บันทึกแล้ว — กำลังทดสอบ...';}
   testSheet();
@@ -6334,7 +6444,7 @@ function testSheet(){
       if(d.status==='ready'||d.status==='ok'){
         // บันทึก URL และ set connected
         S.scriptUrl=url;
-        localStorage.setItem('tj_url',url);
+        lsSet('tj_url',url);
         setConn(true);
         res.style.color='var(--green)';
         res.textContent='✅ เชื่อมต่อสำเร็จ! กำลังดึงข้อมูล...';
@@ -6359,7 +6469,7 @@ function testSheet(){
       setConn(false);
     });
 }
-function setConn(ok){var d=document.getElementById('sDot'),t=document.getElementById('sTxt');if(ok){d.classList.add('connected');t.textContent='Connected';t.style.color='var(--green)';loadAssetsFromSheet();}else{d.classList.remove('connected');t.textContent='Local';t.style.color='var(--text-muted)';}}
+function setConn(ok){var d=document.getElementById('sDot'),t=document.getElementById('sTxt');if(ok){d.classList.add('connected');t.textContent='Connected';t.style.color='var(--green)';loadAssetsFromSheet();}else{d.classList.remove('connected');var noSheet=!S.scriptUrl&&!(typeof localStorage!=='undefined'&&lsGet('tj_url'));t.textContent=noSheet?'Local Mode':'Offline';t.style.color='var(--text-muted)';}}
 // ── Retry queue: ออเดอร์ที่ส่ง Sheet ไม่ได้จะถูก queue ไว้ retry ──
 var _sendQueue=[];
 var _sendRetryTimer=null;
@@ -6371,19 +6481,19 @@ function _flushSendQueue(){
   if(item.payload&&item.payload._queuedUrl&&item.payload._queuedUrl!==S.scriptUrl){
     console.warn('[sendQueue] URL mismatch — discarding stale queue');
     _sendQueue=[];
-    localStorage.removeItem('tj_send_queue');
+    lsRem('tj_send_queue');
     return;
   }
   fetch(S.scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(item.payload)})
     .then(function(){
       _sendQueue.shift();
       if(_sendQueue.length) _flushSendQueue();
-      else localStorage.removeItem('tj_send_queue');
+      else lsRem('tj_send_queue');
     })
     .catch(function(err){
       console.warn('[sendSheet retry fail]',err.message);
       // save queue to localStorage so it survives page reload
-      try{ localStorage.setItem('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
+      try{ lsSet('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
       _sendRetryTimer=setTimeout(_flushSendQueue,15000);
     });
 }
@@ -6400,16 +6510,16 @@ function sendSheet(action,data){
       showToast('⚠ Sheet offline — บันทึก local แล้ว จะ retry อัตโนมัติ','error');
       payload._queuedUrl=S.scriptUrl; // เก็บ URL ตอนที่ queue เพื่อตรวจ URL ไม่ตรง
       _sendQueue.push({payload:payload,action:action,ts:Date.now()});
-      try{ localStorage.setItem('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
+      try{ lsSet('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
       _sendRetryTimer=setTimeout(_flushSendQueue,15000);
     });
 }
 // โหลด queue ที่ค้างจาก localStorage เมื่อ startup
 (function(){
   try{
-    var q=JSON.parse(localStorage.getItem('tj_send_queue')||'[]');
+    var q=JSON.parse(lsGet('tj_send_queue')||'[]');
     if(q.length){
-      var currentUrl=localStorage.getItem('tj_url')||'';
+      var currentUrl=lsGet('tj_url')||'';
       // FIX: กรอง queue ที่เป็นของ URL ปัจจุบันเท่านั้น
       if(currentUrl){
         q=q.filter(function(item){
@@ -6421,7 +6531,7 @@ function sendSheet(action,data){
         _sendQueue=q;
         setTimeout(_flushSendQueue,3000);
       } else {
-        localStorage.removeItem('tj_send_queue');
+        lsRem('tj_send_queue');
       }
     }
   }catch(e){}
@@ -6440,7 +6550,7 @@ function loadAssetsFromSheet(){
     .then(function(d){
       if(d.status==='ok'&&d.assets&&d.assets.length){
         // Merge with localStorage, sheet wins
-        localStorage.setItem('tj_drop_oAsset', JSON.stringify(d.assets));
+        lsSet('tj_drop_oAsset', JSON.stringify(d.assets));
         var sel=document.getElementById('oAsset'); if(!sel) return;
         Array.from(sel.options).forEach(function(o){if(o.value!=='')o.remove();});
         d.assets.forEach(function(v){
@@ -6685,10 +6795,10 @@ var DEFAULT_SESSIONS=[
   {id:'newyork',label:'New York',time:'20:00-05:00',cls:'newyork'}
 ];
 function loadCustomSessions(){
-  try{return JSON.parse(localStorage.getItem('tj_custom_sess')||'null');}catch(e){return null;}
+  try{return JSON.parse(lsGet('tj_custom_sess')||'null');}catch(e){return null;}
 }
 function saveCustomSessions(){
-  localStorage.setItem('tj_custom_sess',JSON.stringify(_customSessions));
+  lsSet('tj_custom_sess',JSON.stringify(_customSessions));
   if(S.scriptUrl) sendSheet('saveSettings',{key:'custom_sessions',value:_customSessions.map(function(s){return s.label+(s.time?' ('+s.time+')':'');}).join(', ')});
 }
 var _customSessions=loadCustomSessions()||DEFAULT_SESSIONS.map(function(s){return Object.assign({},s);});
@@ -7014,10 +7124,10 @@ function saveStratList(){
   var row=document.getElementById('stratRow');if(!row)return;
   var names=[];
   row.querySelectorAll('.strat-wrap .tag').forEach(function(el){names.push(el.textContent.trim());});
-  localStorage.setItem('tj_strat_list',JSON.stringify(names));
+  lsSet('tj_strat_list',JSON.stringify(names));
 }
 function loadStratList(){
-  try{return JSON.parse(localStorage.getItem('tj_strat_list')||'null');}catch(e){return null;}
+  try{return JSON.parse(lsGet('tj_strat_list')||'null');}catch(e){return null;}
 }
 function initStratRow(){
   var saved=loadStratList();
@@ -7087,7 +7197,7 @@ function openDropEdit(selectId, label){
 }
 function deResetOpts(selectId){
   if(!confirm('รีเซ็ตกลับค่าเริ่มต้น?')) return;
-  localStorage.removeItem('tj_drop_'+selectId);
+  lsRem('tj_drop_'+selectId);
   var sel=document.getElementById(selectId); if(!sel) return;
   Array.from(sel.options).forEach(function(o){if(o.value!=='')o.remove();});
   (DROP_DEFAULTS[selectId]||[]).forEach(function(v){
@@ -7377,8 +7487,6 @@ function openShareDashboard(){
     +'<button onclick="document.getElementById(\'shareDashModal\').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;line-height:1;" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--text-muted)\'">✕</button>'
     +'<div style="font-size:14px;font-weight:600;margin-bottom:4px;">🔗 Share Dashboard</div>'
     +'<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">สร้างลิ้งค์แชร์ข้อมูลเทรดของคุณ — ผู้รับสามารถดูข้อมูลแบบ Read-only ได้</div>'
-    // Privacy warning
-    +'<div style="background:rgba(255,77,106,.07);border:1px solid rgba(255,77,106,.25);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:10px;color:var(--red);line-height:1.7;">🔒 <strong>คำเตือนด้านความเป็นส่วนตัว:</strong> ลิ้งค์ที่สร้างจะให้ทุกคนที่มีลิ้งค์ดูข้อมูลการเทรดได้ทั้งหมด ไม่มีรหัสผ่านและไม่มีวันหมดอายุ — แชร์เฉพาะกับคนที่ไว้ใจเท่านั้น</div>'
     // Info row
     +'<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'
     +'<div style="font-size:10px;color:var(--text-muted);margin-bottom:5px;">📊 ข้อมูลที่จะแชร์ (พอร์ต: <strong style="color:var(--accent);">'+portName+'</strong>)</div>'
@@ -7948,7 +8056,7 @@ function ndLoadContent(){
     ndBindImgZoom(editor);
     return;
   }
-  var saved=localStorage.getItem(ndStorageKey());
+  var saved=lsGet(ndStorageKey());
   editor.innerHTML = saved || '';
   editor.contentEditable='true';
   ndBindImgZoom(editor);
@@ -7965,7 +8073,7 @@ function ndSave(){
   if(_isReadOnly){showToast('🔒 โหมดดูเท่านั้น — ไม่สามารถแก้ไขได้','error');return;}
   var editor=document.getElementById('noteDayEditor');
   if(!editor) return;
-  localStorage.setItem(ndStorageKey(), editor.innerHTML);
+  lsSet(ndStorageKey(), editor.innerHTML);
   var lbl=document.getElementById('ndAutoSaveLabel');
   if(lbl){ var now=new Date(); lbl.textContent='บันทึกแล้ว '+pad(now.getHours())+':'+pad(now.getMinutes()); }
   // sync to Google Sheet Journal
@@ -7982,7 +8090,7 @@ function ndAutoSave(){
   _ndAutoSaveTimer=setTimeout(function(){
     var editor=document.getElementById('noteDayEditor');
     if(!editor) return;
-    localStorage.setItem(ndStorageKey(), editor.innerHTML);
+    lsSet(ndStorageKey(), editor.innerHTML);
     var lbl=document.getElementById('ndAutoSaveLabel');
     if(lbl){ var now=new Date(); lbl.textContent='บันทึกอัตโนมัติ '+pad(now.getHours())+':'+pad(now.getMinutes()); }
   },3000);
@@ -7993,7 +8101,7 @@ function ndClear(){
   showConfirm('ล้าง Note of Day วันนี้ทั้งหมดใช่ไหม?', function(){
     var editor=document.getElementById('noteDayEditor');
     if(editor){ editor.innerHTML=''; editor.focus(); }
-    localStorage.removeItem(ndStorageKey());
+    lsRem(ndStorageKey());
     var lbl=document.getElementById('ndAutoSaveLabel');
     if(lbl) lbl.textContent='';
     showToast('🗑 ล้าง Note of Day แล้ว','success');
@@ -8092,7 +8200,14 @@ function ndSetFontFamily(font){
 
 function ndOnKeyDown(e){
   ndAutoSave();
-  if(e.key==='Tab'){ e.preventDefault(); document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;'); }
+  if(e.key==='Tab'){ e.preventDefault(); document.execCommand('insertHTML',false,'&nbsp;&nbsp;&nbsp;&nbsp;'); return; }
+  // Ctrl+Z = Undo, Ctrl+Y / Ctrl+Shift+Z = Redo
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key==='z'){
+    e.preventDefault(); document.execCommand('undo'); return;
+  }
+  if((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.shiftKey && e.key==='z'))){
+    e.preventDefault(); document.execCommand('redo'); return;
+  }
 }
 
 // Image insert
@@ -8205,7 +8320,7 @@ var DT_SESSION_OPTS=['Sydney','Tokyo','London','New York'];
 
 function dtLoad(){
   try{
-    var raw=localStorage.getItem('dt_trades');
+    var raw=lsGet('dt_trades');
     DT.trades=raw?JSON.parse(raw):[];
     if(!Array.isArray(DT.trades)) DT.trades=[];
     // ── Migrate: normalize result ค่าที่ไม่ถูกต้อง ──
@@ -8213,10 +8328,10 @@ function dtLoad(){
     DT.trades.forEach(function(t){
       if(t.result==='m'||t.result==='M') { t.result='Miss'; needSave=true; }
     });
-    if(needSave) localStorage.setItem('dt_trades',JSON.stringify(DT.trades));
+    if(needSave) lsSet('dt_trades',JSON.stringify(DT.trades));
   }catch(e){ DT.trades=DT.trades||[]; }
 }
-function dtSave(){ localStorage.setItem('dt_trades',JSON.stringify(DT.trades)); }
+function dtSave(){ lsSet('dt_trades',JSON.stringify(DT.trades)); }
 
 // ── Contract point values for auto-calc ──
 
@@ -9056,7 +9171,7 @@ function dtFiltered(){
     var portsToLoad=_dtSelectedPorts.length>0?_dtSelectedPorts:Object.keys(S.portfolios||{'default':{}});
     portsToLoad.forEach(function(pid){
       var portTrades={};
-      try{ portTrades=JSON.parse(localStorage.getItem('port_'+pid+'_t')||'{}'); }catch(e){}
+      try{ portTrades=JSON.parse(lsGet('port_'+pid+'_t')||'{}'); }catch(e){}
       Object.keys(portTrades).forEach(function(dk){
         (portTrades[dk]||[]).forEach(function(t){
           // Map entryDate (portfolio field) → entryTime (data table field) for display
@@ -9133,13 +9248,13 @@ function dtFiltered(){
 
 // ── Pagination state ──
 var _dtPage=1;
-var _dtPageSize=(function(){var v=parseInt(localStorage.getItem('dt_pageSize')||'50');return isNaN(v)?50:v;})();
+var _dtPageSize=(function(){var v=parseInt(lsGet('dt_pageSize')||'50');return isNaN(v)?50:v;})();
 var _dtCurrentRows=[]; // always holds the latest filtered rows for charts
 
 function dtChangePageSize(val){
   _dtPageSize=parseInt(val)||0;
   _dtPage=1;
-  try{localStorage.setItem('dt_pageSize',String(_dtPageSize));}catch(e){}
+  try{lsSet('dt_pageSize',String(_dtPageSize));}catch(e){}
   dtRender();
 }
 function dtGoPage(p){_dtPage=p;dtRender();}
@@ -9329,7 +9444,7 @@ function dtUpdateFilterOpts(rows){
 
   function mergeOpts(fromData, defaultKey, sortFn){
     var defaults=DROP_DEFAULTS[defaultKey]||[];
-    var saved=[]; try{saved=JSON.parse(localStorage.getItem('tj_drop_'+defaultKey)||'[]');}catch(e){}
+    var saved=[]; try{saved=JSON.parse(lsGet('tj_drop_'+defaultKey)||'[]');}catch(e){}
     var merged=[...new Set([...defaults,...saved,...fromData])].filter(Boolean);
     return sortFn ? merged.sort(sortFn) : merged.sort();
   }
@@ -9372,13 +9487,13 @@ function dtSaveFilters(resetPage){
   ['dtfAsset','dtfResult','dtfDay','dtfSession','dtfCode','dtfMode','dtfClass','dtfModel','dtfFibo','dtfDur','dtfEntryTime'].forEach(function(id){
     var el=document.getElementById(id);if(el)state[id]=el.value;
   });
-  localStorage.setItem('dt_filters',JSON.stringify(state));
+  lsSet('dt_filters',JSON.stringify(state));
 }
 
 // โหลด filter state จาก localStorage
 function dtRestoreFilters(){
   try{
-    var state=JSON.parse(localStorage.getItem('dt_filters')||'{}');
+    var state=JSON.parse(lsGet('dt_filters')||'{}');
     Object.keys(state).forEach(function(id){
       var el=document.getElementById(id);
       if(el&&state[id]) el.value=state[id];
@@ -9550,12 +9665,14 @@ function updatePortSelectorLabel(){
 
 function dtResetFilters(){
   ['dtfAsset','dtfResult','dtfDay','dtfSession','dtfCode','dtfMode','dtfClass','dtfModel','dtfFibo','dtfEntryTime'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.selectedIndex=0;
+    var el=document.getElementById(id);
+    if(el){ el.selectedIndex=0; el.value=''; }
   });
   var dur=document.getElementById('dtfDur');if(dur)dur.value='';
+  lsRem('dt_filter_state'); lsRem('dt_filters');
   var inc=document.getElementById('dtIncludePort');if(inc)inc.checked=false;
-  localStorage.removeItem('dt_filters');
-  localStorage.removeItem('dt_filter_state');
+  lsRem('dt_filters');
+  lsRem('dt_filter_state');
   window._dtPendingFilterRestore=null;
   dtRender();
 }
@@ -9600,6 +9717,7 @@ function dtDrawEquityCurve(rows){
     return;
   }
   sec.style.display='block';
+  if(valEl) valEl.style.display='inline';
 
   // Compute cumulative PnL
   var sorted=rows.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
@@ -9737,12 +9855,12 @@ function dtDrawEquityCurve(rows){
 // ── Chart order persistence ──
 var _dtChartOrder=null;
 function dtGetChartOrder(){
-  if(!_dtChartOrder){try{_dtChartOrder=JSON.parse(localStorage.getItem('dt_chart_order')||'null');}catch(e){}}
+  if(!_dtChartOrder){try{_dtChartOrder=JSON.parse(lsGet('dt_chart_order')||'null');}catch(e){}}
   return _dtChartOrder;
 }
 function dtSaveChartOrder(order){
   _dtChartOrder=order;
-  try{localStorage.setItem('dt_chart_order',JSON.stringify(order));}catch(e){}
+  try{lsSet('dt_chart_order',JSON.stringify(order));}catch(e){}
 }
 
 // ── Card width + collapse state persistence ──
@@ -9759,10 +9877,10 @@ function dtSaveCardWidths(){
       collapsed: collapsed
     };
   });
-  try{localStorage.setItem('dt_card_widths',JSON.stringify(widths));}catch(e){}
+  try{lsSet('dt_card_widths',JSON.stringify(widths));}catch(e){}
 }
 function dtGetCardWidths(){
-  try{return JSON.parse(localStorage.getItem('dt_card_widths')||'{}');}catch(e){return {};}
+  try{return JSON.parse(lsGet('dt_card_widths')||'{}');}catch(e){return {};}
 }
 
 // ── Filter state persistence ──
@@ -9776,11 +9894,11 @@ function dtSaveFilterState(){
   // Save filter panel open/close state
   var body=document.getElementById('dtFilterBody');
   state._panelOpen = body&&body.style.display!=='none';
-  try{localStorage.setItem('dt_filter_state',JSON.stringify(state));}catch(e){}
+  try{lsSet('dt_filter_state',JSON.stringify(state));}catch(e){}
 }
 function dtRestoreFilterState(){
   var state={};
-  try{state=JSON.parse(localStorage.getItem('dt_filter_state')||'{}');}catch(e){}
+  try{state=JSON.parse(lsGet('dt_filter_state')||'{}');}catch(e){}
   if(!state||!Object.keys(state).length) return;
   // Restore filter panel open/close
   if(state._panelOpen){
@@ -9819,7 +9937,7 @@ function dtApplyPendingFilterRestore(){
 
 // ── Row assignment save/load ──
 function dtGetChartRows(){
-  try{return JSON.parse(localStorage.getItem('dt_chart_rows')||'null');}catch(e){return null;}
+  try{return JSON.parse(lsGet('dt_chart_rows')||'null');}catch(e){return null;}
 }
 function dtSaveChartRows(){
   var r1=[],r2=[],r3=[];
@@ -9829,7 +9947,7 @@ function dtSaveChartRows(){
   if(el1)el1.querySelectorAll('.bc-card').forEach(function(c){if(c.dataset.ckey)r1.push(c.dataset.ckey);});
   if(el2)el2.querySelectorAll('.bc-card').forEach(function(c){if(c.dataset.ckey)r2.push(c.dataset.ckey);});
   if(el3)el3.querySelectorAll('.bc-card').forEach(function(c){if(c.dataset.ckey)r3.push(c.dataset.ckey);});
-  try{localStorage.setItem('dt_chart_rows',JSON.stringify({r1:r1,r2:r2,r3:r3}));}catch(e){}
+  try{lsSet('dt_chart_rows',JSON.stringify({r1:r1,r2:r2,r3:r3}));}catch(e){}
 }
 
 // ── Drag-and-drop: ลากข้ามแถวได้ ──
@@ -9849,12 +9967,12 @@ function dtApplyRowHeight(rowNum, h){
     b.style.height=h+'px';
     b.style.minHeight=h+'px';
   });
-  try{localStorage.setItem('dt_row_heights',JSON.stringify(_dtRowHeights));}catch(e){}
+  try{lsSet('dt_row_heights',JSON.stringify(_dtRowHeights));}catch(e){}
 }
 
 function dtLoadRowHeights(){
   try{
-    var saved=JSON.parse(localStorage.getItem('dt_row_heights')||'null');
+    var saved=JSON.parse(lsGet('dt_row_heights')||'null');
     if(saved) _dtRowHeights=Object.assign({1:110,2:110,3:110},saved);
   }catch(e){}
 }
@@ -9931,8 +10049,8 @@ function dtConfirmClearAll(){
     dtLoad();
     var toDelete=DT.trades.slice();
     // ── ตั้ง tombstone ก่อน clear — ป้องกัน syncFromSheet ดึงกลับมา ──
-    try{localStorage.setItem('dt_data_cleared','1');}catch(e){}
-    try{localStorage.removeItem('dt_trades');}catch(e){}
+    try{lsSet('dt_data_cleared','1');}catch(e){}
+    try{lsRem('dt_trades');}catch(e){}
     DT.trades=[];
     modal.remove();
     showToast('🗑 ลบ Data ทั้งหมดแล้ว','success');
@@ -9949,19 +10067,19 @@ function dtConfirmClearAll(){
 
 // ── Sync ลบ Data ทั้งหมดออกจาก Google Sheet ──
 function dtClearAllFromSheet(trades){
-  if(!S.scriptUrl){ localStorage.removeItem('dt_data_cleared'); return; }
+  if(!S.scriptUrl){ lsRem('dt_data_cleared'); return; }
   var cnt=trades?trades.length:0;
   showToast('📤 กำลังลบ '+cnt+' rows จาก Google Sheet...','success');
 
   // ── ตั้ง safety timeout: clear tombstone อัตโนมัติใน 60 วิ ──
   // FIX: เพิ่มจาก 30→60 วิ เพื่อให้ GAS ลบเสร็จก่อน tombstone หมดอายุ
   var _safetyTimer = setTimeout(function(){
-    localStorage.removeItem('dt_data_cleared');
+    lsRem('dt_data_cleared');
   }, 60000);
 
   function _onSuccess(deleted){
     clearTimeout(_safetyTimer);
-    localStorage.removeItem('dt_data_cleared');
+    lsRem('dt_data_cleared');
     showToast('✅ ลบออกจาก Sheet เสร็จ ('+(deleted||cnt)+' rows)','success');
   }
 
@@ -10902,7 +11020,7 @@ if(document.readyState==='loading'){
 
       <!-- Emotional Slider -->
       <div style="margin-bottom:8px;">
-        <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="dtEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - 🙂 Calm</span></div>
+        <div class="field-label">Emotional ตอนเข้าออเดอร์ <span id="dtEmoLabel" style="color:var(--amber);font-size:10px;font-family:var(--font-mono);">5 - Calm</span></div>
         <input type="range" id="dtEmoSlider" min="1" max="10" value="5" oninput="dtUpdateEmo(this.value)" style="width:100%;accent-color:var(--accent);cursor:pointer;">
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:1px;"><span>😡 1</span><span>😊 5</span><span>😎 10</span></div>
       </div>
@@ -10965,7 +11083,7 @@ if(document.readyState==='loading'){
     <div style="padding:16px 18px;">
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 13px;line-height:1.7;">
         <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, FiboLevel, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
         <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
       </div>
 
@@ -11122,10 +11240,9 @@ if(document.readyState==='loading'){
         </div>
 
         <div class="help-section-title">📝 Code ทั้งหมด — คัดลอกแล้ววางใน Apps Script</div>
-        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:10px 13px;margin-bottom:10px;font-size:11px;color:var(--amber);line-height:1.7;">⚠️ <strong>หมายเหตุ:</strong> Code ในแท็บนี้เป็นเวอร์ชันเก่า (v5.1) — กรุณาใช้ Code เวอร์ชันล่าสุด <strong>v5.2</strong> จากเมนู <span style="background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1px 6px;">⚙ → 🔗 Google Sheet URL → แท็บ Code: v5.2</span> แทน เพื่อรองรับ FiboLevel และ schema ที่ถูกต้อง</div>
         <div style="position:relative;">
-          <div id="helpCodeBlock" class="help-code-block" style="max-height:340px;overflow-y:auto;opacity:.7;">/* =========================================
-   TradeLog Pro+ — Google Apps Script v5.1 (เวอร์ชันเก่า — ใช้ v5.2 จาก Settings แทน)
+          <div id="helpCodeBlock" class="help-code-block" style="max-height:340px;overflow-y:auto;">/* =========================================
+   TradeLog Pro+ — Google Apps Script v5.1
    รองรับ: Portfolio | Data Mode Trades
            Candle | Mode | TF | Trend
            Zone | Confirm | Sessions
@@ -11390,7 +11507,7 @@ function _log(action,detail,portfolio,source,status){
     var ss=SpreadsheetApp.getActiveSpreadsheet();
     var sh=ss.getSheetByName(SHEET.LOG)||ss.insertSheet(SHEET.LOG);
     if(sh.getLastRow()===0) sh.appendRow(['Timestamp','Action','Detail','Portfolio','Source','Status']);
-    if(sh.getLastRow()>5001) sh.deleteRow(2);
+    while(sh.getLastRow()>2001) sh.deleteRow(2);
     sh.appendRow([new Date().toISOString(),action,detail||'',portfolio||'',source||'',status||'']);
   }catch(e){}
 }
@@ -11426,7 +11543,7 @@ function setupSheets(){
     .addItem('⚙️ Setup Sheets','setupSheets')
     .addItem('🔍 Check &amp; Clean Duplicates','checkDuplicates')
     .addToUi();
-  SpreadsheetApp.getUi().alert('✅ TradeLog Pro+ v5.1 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ');
+  SpreadsheetApp.getUi().alert('✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ');
 }
 
 // ── checkDuplicates ──
@@ -11466,7 +11583,7 @@ function checkDuplicates(){
             <div class="help-step-num" style="background:rgba(168,85,247,.15);color:var(--purple);">2</div>
             <div class="help-step-body">
               <div class="help-step-title">วาง Code และ Run setupSheets()</div>
-              <div class="help-step-desc">ลบ code เดิมทั้งหมดออก → วาง code จากแท็บ <b>📋 Apps Script</b> → กด <span class="help-badge" style="background:var(--green-dim);color:var(--green);">▶ Run</span> (เลือก function: <code>setupSheets</code>) → อนุญาต Permission → รอ Alert "✅ TradeLog Pro+ v5.2 พร้อม!"</div>
+              <div class="help-step-desc">ลบ code เดิมทั้งหมดออก → วาง code จากแท็บ <b>📋 Apps Script</b> → กด <span class="help-badge" style="background:var(--green-dim);color:var(--green);">▶ Run</span> (เลือก function: <code>setupSheets</code>) → อนุญาต Permission → รอ Alert "✅ TradeLog Pro+ v5.1 พร้อม!"</div>
               <div class="help-img-placeholder">📸 วาง Code → Run setupSheets</div>
             </div>
           </div>
