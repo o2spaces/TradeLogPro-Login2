@@ -843,8 +843,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
             <select id="dtfClass" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Candle <button onclick="event.stopPropagation();openDropEdit('dtfModel','Candle (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
             <select id="dtfModel" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
-          <div><div style="font-size:9px;color:var(--purple);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;font-weight:600;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
-            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;font-family:var(--font-mono);"><option value="">All</option></select></div>
+          <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
+            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">Duration (≤ นาที)</div>
             <input type="number" id="dtfDur" placeholder="ไม่จำกัด" min="0" oninput="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">&#x23F0; Entry Time</div>
@@ -1382,7 +1382,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
                 </div>
                 <div>
                   <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('oFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-                  <select class="form-input" id="oFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
+                  <select class="form-input" id="oFiboLevel"><option value="">Select</option></select>
                 </div>
               </div>
             </div>
@@ -2623,9 +2623,9 @@ function _authInit(){
       _authSession = saved;
       _authApply(saved);
       document.getElementById('authOverlay').style.display = 'none';
-      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
+      // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
       var localUrl = localStorage.getItem('tj_url') || '';
-      if(!localUrl){
+      if(!saved.scriptUrl && !localUrl){
         _showSetupSheetOverlay();
       }
       return;
@@ -2911,6 +2911,7 @@ async function _processGoogleLogin(email, name){
         username:    data.username,
         displayName: data.displayName || name,
         role:        data.role,
+        scriptUrl:   data.scriptUrl || '',
         loginType:   'google',
         expiry:      Date.now() + 7 * 24 * 60 * 60 * 1000  // Google session = 7 วัน
       };
@@ -2925,6 +2926,10 @@ async function _processGoogleLogin(email, name){
       }catch(e){}
       localStorage.setItem('tj_session', JSON.stringify(session));
       _authSession = session;
+      if(session.scriptUrl){
+        S.scriptUrl = session.scriptUrl;
+        localStorage.setItem('tj_url', session.scriptUrl);
+      }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
       ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
@@ -2936,9 +2941,8 @@ async function _processGoogleLogin(email, name){
         showToast('👋 ยินดีต้อนรับกลับ ' + session.displayName + '!', 'success');
       }
 
-      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
-      var localUrl = localStorage.getItem('tj_url') || '';
-      if(!localUrl){
+      // ถ้าไม่มี scriptUrl → แสดง setup overlay
+      if(!session.scriptUrl && !localStorage.getItem('tj_url')){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
         setConn(true); syncFromSheet();
@@ -2987,21 +2991,26 @@ async function authDoLogin(){
         username:    data.username,
         displayName: data.displayName || data.username,
         role:        data.role,
+        scriptUrl:   data.scriptUrl || '',
         _hash:       hash,
         loginType:   'password',
         expiry:      Date.now() + 24 * 60 * 60 * 1000
       };
       localStorage.setItem('tj_session', JSON.stringify(session));
       _authSession = session;
+      if(session.scriptUrl){
+        S.scriptUrl = session.scriptUrl;
+        localStorage.setItem('tj_url', session.scriptUrl);
+      }
       _authApply(session);
       var ov = document.getElementById('authOverlay');
       ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
       setTimeout(function(){ ov.style.display = 'none'; ov.style.opacity = '1'; }, 380);
       showToast('👋 ยินดีต้อนรับ ' + session.displayName + '!', 'success');
 
-      // ตรวจ scriptUrl จาก localStorage ของเครื่องนี้เท่านั้น
+      // ถ้าไม่มี scriptUrl → แสดง setup overlay
       var localUrl = localStorage.getItem('tj_url') || '';
-      if(!localUrl){
+      if(!session.scriptUrl && !localUrl){
         setTimeout(function(){ _showSetupSheetOverlay(); }, 600);
       } else if(S.scriptUrl && !window._initSyncDone){
         setConn(true); syncFromSheet();
@@ -3036,8 +3045,8 @@ function _authApply(session){
   // แสดงเมนู "ตั้งค่า Sheet URL ของฉัน" เมื่อ login ด้วย auth system
   var menuSetup = document.getElementById('menuSetupSheet');
   if(menuSetup) menuSetup.style.display = '';
-  // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้เท่านั้น (ไม่ดึงจาก server)
-  var urlToUse = localStorage.getItem('tj_url') || '';
+  // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
+  var urlToUse = session.scriptUrl || localStorage.getItem('tj_url') || '';
   if(urlToUse) S.scriptUrl = urlToUse;
 }
 
@@ -3103,7 +3112,32 @@ async function setupSheetSave(){
   S.scriptUrl = url;
   localStorage.setItem('tj_url', url);
 
-  // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้ — ไม่ส่งกลับ Auth Server
+  // อัปเดต session ใน memory
+  if(_authSession){ _authSession.scriptUrl = url; }
+
+  // ส่งกลับ Auth Server ให้จำสำหรับ login ครั้งหน้า (ถ้ามี password hash)
+  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(authUrl && _authSession && _authSession._hash){
+    try{
+      await fetch(authUrl, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          action:       'updateScriptUrl',
+          username:     _authSession.username,
+          passwordHash: _authSession._hash,
+          scriptUrl:    url
+        })
+      });
+      // อัปเดต session ที่เก็บไว้ด้วย
+      var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+      if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+    }catch(e){ console.warn('updateScriptUrl failed:', e); }
+  } else if(authUrl && _authSession && _authSession.loginType === 'google'){
+    // Google login ไม่มี hash — บันทึกแค่ localStorage ก็พอ (session expire แล้ว sync กลับ Auth ไม่ได้)
+    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+    if(saved){ saved.scriptUrl = url; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+  }
 
   btn.disabled = false; btn.textContent = '✅ บันทึกและเชื่อมต่อ';
 
@@ -3142,15 +3176,15 @@ function closeAdminPanel(){
 
 function adminLoadUsers(){
   var tbody = document.getElementById('adminBody');
-  tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>';
   var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
+  if(!url){ tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ไม่ได้ตั้งค่า Auth URL ใน config.js</td></tr>'; return; }
 
   fetch(url + '?action=getUsers&adminUser=' + encodeURIComponent(_authSession.username))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.status !== 'ok'){
-        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + (d.msg||'error') + '</td></tr>'; return;
       }
       var users = d.users || [];
       var today = new Date().toDateString();
@@ -3161,11 +3195,12 @@ function adminLoadUsers(){
       document.getElementById('stAdmins').textContent = adminCount;
 
       if(!users.length){
-        tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">ยังไม่มี User</td></tr>'; return;
       }
       tbody.innerHTML = users.map(function(u){
         var isToday  = u.lastLogin && new Date(u.lastLogin).toDateString()===today;
         var llStr    = u.lastLogin ? new Date(u.lastLogin).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '<span style="color:var(--text-muted)">ยังไม่เคย</span>';
+        var urlShort = u.scriptUrl ? u.scriptUrl.replace('https://script.google.com/macros/s/','…/').substring(0,36)+'…' : '<span style="color:var(--text-muted)">—</span>';
         var isSelf   = u.username === _authSession.username;
         return '<tr>'
           + '<td><span style="font-weight:600;">' + (isToday?'<span class="online-pip"></span>':'') + u.username + '</span>'
@@ -3173,6 +3208,7 @@ function adminLoadUsers(){
           + '<td><span class="role-badge '+(u.role==='admin'?'admin':'user')+'">'+(u.role==='admin'?'🛡 Admin':'👤 User')+'</span></td>'
           + '<td>' + llStr + '</td>'
           + '<td style="text-align:center;font-family:var(--font-mono);font-weight:600;color:var(--accent);">' + (u.loginCount||0) + '</td>'
+          + '<td style="font-size:9px;font-family:var(--font-mono);color:var(--teal);">' + urlShort + '</td>'
           + '<td style="text-align:center;">'
           + (isSelf ? '<span style="color:var(--text-muted);font-size:10px;">—</span>'
             : '<button onclick="adminDeleteUser(\''+u.username+'\')" style="background:none;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;padding:2px 8px;border-radius:4px;font-size:10px;" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-muted)\'">✕ ลบ</button>')
@@ -3180,7 +3216,7 @@ function adminLoadUsers(){
       }).join('');
     })
     .catch(function(e){
-      tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red);">❌ ' + e.message + '</td></tr>';
     });
 }
 
@@ -3188,6 +3224,7 @@ async function adminAddUser(){
   var uname   = (document.getElementById('regUser').value    || '').trim().toLowerCase();
   var pass    = document.getElementById('regPass').value     || '';
   var role    = document.getElementById('regRole').value     || 'user';
+  var script  = (document.getElementById('regScript').value  || '').trim();
   var display = (document.getElementById('regDisplay').value || '').trim();
   var errEl   = document.getElementById('regErr');
   var btn     = document.getElementById('regBtn');
@@ -3201,11 +3238,13 @@ async function adminAddUser(){
     var url  = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
     var res  = await fetch(url, { method:'POST', body:JSON.stringify({
       action:'registerUser', adminUser:_authSession.username,
-      username:uname, passwordHash:hash, role:role, displayName:display||uname
+      username:uname, passwordHash:hash, role:role,
+      scriptUrl:script, displayName:display||uname
     })});
     var data = await res.json();
     if(data.status==='ok'){
       showToast('✅ เพิ่ม User "'+uname+'" สำเร็จ','success');
+      ['regUser','regPass','regScript','regDisplay'].forEach(function(id){ document.getElementById(id).value=''; });
       adminLoadUsers();
     } else {
       errEl.textContent = '❌ ' + (data.msg||'เกิดข้อผิดพลาด'); errEl.style.display='block';
@@ -3763,9 +3802,12 @@ function init(){
   try{
     S.sessions=JSON.parse(localStorage.getItem('tj_s')||'{}');
     S.trades=JSON.parse(localStorage.getItem('tj_t')||'{}');
-    // scriptUrl เก็บแค่ใน localStorage ของเครื่องนี้เท่านั้น
+    // Priority: session.scriptUrl > localStorage tj_url
     var localUrl = localStorage.getItem('tj_url') || '';
-    S.scriptUrl = localUrl;
+    var sessionUrl = (_authSession && _authSession.scriptUrl) ? _authSession.scriptUrl : '';
+    S.scriptUrl = sessionUrl || localUrl;
+    // ถ้า session มี scriptUrl แต่ localStorage ไม่มี → sync ลง localStorage
+    if(sessionUrl && !localUrl){ localStorage.setItem('tj_url', sessionUrl); }
     S.keys=JSON.parse(localStorage.getItem('tj_k')||'{}');
     S.prov=localStorage.getItem('tj_p')||'gemini';
     S.provBackup=localStorage.getItem('tj_pb')||'groq';
@@ -8721,6 +8763,22 @@ function dtUpdateFilterBadge(){
   badge.style.display=count?'inline':'none';
   badge.textContent=count+' active';
 }
+function dtDownloadTemplate(){
+  var headers=['Date','Portfolio','Asset','Session','Duration','SetupDuration','SetupClass','Candle','Code','Mode','TF','Zone','MitZone','Confirm','FiboLevel','Entry','TP','SL','Result','Side','Risk','PnL($)','MaxRR','EntryTime','Note','ImageLink'];
+  var example=[
+    ['2026-04-21','Port-A','GC','Tokyo','45','30','A','BullishEngulfing','OB','Breakout','15m','Supply','Supply','BOS','0.618','1920.50','1935.00','1915.00','Win','Long','50','130.00','2.6','08:09','OB entry at 0.618',''],
+    ['2026-04-21','Port-A','GC','London','30','20','B','BearishPin','FVG','Reversal','5m','Demand','','CHoCH','0.500','1918.00','1910.00','1922.00','Loss','Short','50','-50.00','0','09:45','SL hit','']
+  ];
+  var lines=[headers.join(',')];
+  example.forEach(function(r){ lines.push(r.map(function(v){return v.includes(',')?'"'+v+'"':v;}).join(',')); });
+  var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='tradelog_import_template.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('📄 ดาวน์โหลด Template แล้ว','success');
+}
 function dtOpenImport(){
   var ta=document.getElementById('importPasteArea');if(ta)ta.value='';
   var prev=document.getElementById('importPreview');if(prev){prev.style.display='none';prev.innerHTML='';}
@@ -8805,6 +8863,7 @@ function dtParseSheetData(raw){
 
   var cols={
     date:     hIdx(['date','วันที่']),
+    portfolio:hIdx(['portfolio','port','พอร์ต']),
     day:      hIdx(['day','วัน']),
     session:  hIdx(['session','เซสชัน']),
     asset:    hIdx(['asset','symbol','สินทรัพย์']),
@@ -8929,6 +8988,7 @@ function dtParseSheetData(raw){
     trades.push({
       _id:'imp_'+dateOnly+'_'+(entryTime||'')+'_'+(entry||'')+'_'+(g(row,'asset')||'')+'_'+i,
       date:dateOnly,
+      portfolio:g(row,'portfolio'),
       day:day||DT_DAYS[new Date(dateOnly).getDay()],
       session:g(row,'session'),
       asset:g(row,'asset'),
@@ -8966,7 +9026,31 @@ function dtPreviewImport(){
   var trades=dtParseSheetData(raw);
   var prev=document.getElementById('importPreview');
   if(!trades||!trades.length){if(prev){prev.style.display='block';prev.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px;">❌ ไม่พบข้อมูล — ตรวจ header และ separator</div>';}return;}
-  if(prev){prev.style.display='block';prev.innerHTML='<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:6px;">✅ พบ '+trades.length+' rows — ตัวอย่าง:</div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:10px;min-width:500px;"><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:3px 6px;text-align:left;">Day</th><th style="padding:3px 6px;text-align:left;">Session</th><th style="padding:3px 6px;text-align:left;">Time</th><th style="padding:3px 6px;text-align:left;">Code</th><th style="padding:3px 6px;text-align:left;">Mode</th><th style="padding:3px 6px;text-align:right;">Entry</th><th style="padding:3px 6px;text-align:right;">TP</th><th style="padding:3px 6px;text-align:right;">SL</th><th style="padding:3px 6px;">Result</th><th style="padding:3px 6px;">Class</th></tr>'+trades.slice(0,6).map(function(t){var rc=t.result==='Win'||t.result==='TP'?'var(--green)':t.result==='Loss'||t.result==='SL'?'var(--red)':'var(--amber)';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:3px 6px;color:var(--text-muted);">'+t.day+'</td><td style="padding:3px 6px;">'+t.session+'</td><td style="padding:3px 6px;font-family:var(--font-mono);">'+t.entryTime+'</td><td style="padding:3px 6px;">'+t.code+'</td><td style="padding:3px 6px;">'+t.mode+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);">'+t.entry+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);color:var(--green);">'+t.tp+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);color:var(--red);">'+t.sl+'</td><td style="padding:3px 6px;color:'+rc+';">'+t.result+'</td><td style="padding:3px 6px;">'+t.setupClass+'</td></tr>';}).join('')+(trades.length>6?'<tr><td colspan="10" style="padding:3px 6px;color:var(--text-muted);text-align:center;">...อีก '+(trades.length-6)+' rows</td></tr>':'')+'</table></div></div>';}
+  var cols=[
+    {k:'date',lbl:'Date'},{k:'portfolio',lbl:'Portfolio'},{k:'asset',lbl:'Asset'},{k:'side',lbl:'Side'},
+    {k:'session',lbl:'Session'},{k:'entryTime',lbl:'EntryTime'},{k:'duration',lbl:'Duration'},
+    {k:'setupDuration',lbl:'SetupDur'},{k:'setupClass',lbl:'Class'},{k:'candle',lbl:'Candle'},
+    {k:'code',lbl:'Code'},{k:'mode',lbl:'Mode'},{k:'tf',lbl:'TF'},
+    {k:'zone',lbl:'Zone'},{k:'zoneMit',lbl:'MitZone'},{k:'confirm',lbl:'Confirm'},
+    {k:'fiboLevel',lbl:'Fibo'},{k:'entry',lbl:'Entry'},{k:'tp',lbl:'TP'},{k:'sl',lbl:'SL'},
+    {k:'result',lbl:'Result'},{k:'risk',lbl:'Risk'},{k:'pnl',lbl:'PnL($)'},
+    {k:'maxRR',lbl:'MaxRR'},{k:'note',lbl:'Note'},{k:'imgLink',lbl:'ImageLink'}
+  ];
+  var th=cols.map(function(c){return '<th style="padding:4px 7px;white-space:nowrap;font-size:10px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-secondary);">'+c.lbl+'</th>';}).join('');
+  var rows=trades.map(function(t){
+    var rc=t.result==='Win'?'var(--green)':t.result==='Loss'?'var(--red)':'var(--amber)';
+    var tds=cols.map(function(c){
+      var v=t[c.k]||'';
+      var style='padding:3px 7px;white-space:nowrap;font-size:10px;border-bottom:1px solid var(--border);';
+      if(c.k==='result') style+='color:'+rc+';font-weight:600;';
+      else if(c.k==='entry'||c.k==='tp'||c.k==='sl'||c.k==='pnl'||c.k==='risk'||c.k==='maxRR') style+='font-family:var(--font-mono);text-align:right;';
+      else if(c.k==='side') style+='color:'+(v==='Long'?'var(--green)':'var(--red)')+';font-weight:600;';
+      else if(c.k==='entryTime') style+='font-family:var(--font-mono);';
+      return '<td style="'+style+'">'+v+'</td>';
+    }).join('');
+    return '<tr>'+tds+'</tr>';
+  }).join('');
+  if(prev){prev.style.display='block';prev.innerHTML='<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">✅ พบ '+trades.length+' rows — ตัวอย่าง 10 แถวแรก:</div><div style="overflow-x:auto;max-height:320px;overflow-y:auto;"><table style="border-collapse:collapse;font-size:10px;white-space:nowrap;"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
 }
 function dtConfirmImport(){
   var raw=(document.getElementById('importPasteArea')||{}).value||'';
@@ -10966,9 +11050,14 @@ if(document.readyState==='loading'){
     </div>
     <div style="padding:16px 18px;">
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 13px;line-height:1.7;">
-        <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
-        <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+          <div>
+            <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Date, Portfolio, Asset, Session, Duration, SetupDuration, SetupClass, Candle, Code, Mode, TF, Zone, MitZone, Confirm, FiboLevel, Entry, TP, SL, Result, Side, Risk, PnL($), MaxRR, EntryTime, Note, ImageLink</span><br>
+            <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
+          </div>
+          <button onclick="dtDownloadTemplate()" style="flex-shrink:0;background:none;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:var(--font-main);white-space:nowrap;" onmouseover="this.style.background='rgba(34,211,238,.1)'" onmouseout="this.style.background='none'">📄 ดาวน์โหลด Template</button>
+        </div>
       </div>
 
       <!-- Tab: Paste / Upload -->
@@ -12296,6 +12385,8 @@ document.addEventListener('mouseup', function(){
           </div>
         </div>
         <div style="margin-bottom:10px;">
+          <div class="auth-label">Script URL (GAS URL ของ User นี้ — ว่างได้ถ้ายังไม่มี)</div>
+          <input class="settings-input" id="regScript" placeholder="https://script.google.com/macros/s/.../exec">
         </div>
         <button id="regBtn" class="btn-primary" onclick="adminAddUser()" style="font-size:12px;">➕ เพิ่ม User</button>
       </div>
@@ -12310,11 +12401,11 @@ document.addEventListener('mouseup', function(){
           <thead>
             <tr>
               <th>Username</th><th>Role</th><th>Last Login</th>
-              <th style="text-align:center;">Login ทั้งหมด</th><th style="text-align:center;">จัดการ</th>
+              <th style="text-align:center;">Login ทั้งหมด</th><th>Script URL</th><th style="text-align:center;">จัดการ</th>
             </tr>
           </thead>
           <tbody id="adminBody">
-            <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>
+            <tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">⏳ กำลังโหลด...</td></tr>
           </tbody>
         </table>
       </div>
