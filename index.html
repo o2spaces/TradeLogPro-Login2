@@ -566,9 +566,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
     <div id="authErr" class="auth-err"></div>
     <div id="authNoUrl" class="auth-no-url" style="display:none;">⚠️ ระบบยังไม่ได้ตั้งค่า กรุณาติดต่อ Admin</div>
 
-    <!-- Google Sign-In Button -->
+    <!-- Google Sign-In Button (OAuth จริง) -->
     <div id="googleSignInWrap" style="margin-bottom:4px;">
-      <button class="auth-google-btn" onclick="authGoogleSignIn()">
+      <!-- Google Identity Services จะ render ปุ่มที่นี่ -->
+      <div id="g_id_signin_btn" style="display:flex;justify-content:center;"></div>
+      <!-- fallback ปุ่มแบบ custom ถ้า GSI ยังโหลดไม่เสร็จ -->
+      <button id="googleFallbackBtn" class="auth-google-btn" onclick="authGoogleSignIn()" style="display:none;">
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
         เข้าสู่ระบบด้วย Google
       </button>
@@ -843,8 +846,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
             <select id="dtfClass" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Candle <button onclick="event.stopPropagation();openDropEdit('dtfModel','Candle (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
             <select id="dtfModel" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
-          <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
-            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
+          <div><div style="font-size:9px;color:var(--purple);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;font-weight:600;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
+            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;font-family:var(--font-mono);"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">Duration (≤ นาที)</div>
             <input type="number" id="dtfDur" placeholder="ไม่จำกัด" min="0" oninput="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">&#x23F0; Entry Time</div>
@@ -1382,7 +1385,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
                 </div>
                 <div>
                   <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('oFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-                  <select class="form-input" id="oFiboLevel"><option value="">Select</option></select>
+                  <select class="form-input" id="oFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
                 </div>
               </div>
             </div>
@@ -2633,191 +2636,122 @@ function _authInit(){
   }catch(e){}
 
   document.getElementById('authOverlay').style.display = 'flex';
-  // Init Google One Tap
+  // Init Google Sign-In button (OAuth จริง)
   _initGoogleOneTap(url);
-}
-
-// ── Google One Tap / Sign-In ───────────────────────────────────
-function _initGoogleOneTap(authUrl){
-  // One Tap ต้องใช้ Google Client ID — ถ้าไม่มีก็ใช้ popup แทน
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId || !window.google) return;
-  try{
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: function(resp){ _handleGoogleCredential(resp.credential); },
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    google.accounts.id.prompt();
-  }catch(e){}
-}
-
-// Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
-async function authGoogleSignIn(){
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
-
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(clientId && window.google && google.accounts){
-    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
-    if(google.accounts.oauth2){
-      try{
-        google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: 'email profile',
-          prompt: 'select_account',
-          callback: function(tokenResp){
-            if(tokenResp && tokenResp.access_token){
-              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
-              }).then(function(r){ return r.json(); })
-                .then(function(info){
-                  var email = (info.email || '').toLowerCase().trim();
-                  var name  = info.name || email;
-                  if(email) _processGoogleLogin(email, name);
-                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
-            }
-          }
-        }).requestAccessToken();
-        return;
-      }catch(e){}
+  // แสดง fallback btn ชั่วคราวก่อน GSI render เสร็จ
+  setTimeout(function(){
+    var btnDiv = document.getElementById('g_id_signin_btn');
+    var fb = document.getElementById('googleFallbackBtn');
+    if(fb && btnDiv && !btnDiv.querySelector('iframe')){
+      fb.style.display = 'flex';
     }
-    // fallback: One Tap popup mode
+  }, 3000);
+}
+
+// ── Google OAuth 2.0 — render button จริง + Token Client ─────────────────
+function _initGoogleOneTap(authUrl){
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(!clientId) return;
+
+  // รอให้ GSI library โหลดเสร็จก่อน render
+  function _doInit(){
+    if(!window.google || !google.accounts) return;
     try{
+      // Initialize GSI พร้อม callback สำหรับ ID token (One Tap)
       google.accounts.id.initialize({
         client_id: clientId,
         callback: function(resp){ _handleGoogleCredential(resp.credential); },
-        ux_mode: 'popup'
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        use_fedcm_for_prompt: true
       });
-      google.accounts.id.prompt(function(notification){
-        if(notification.isNotDisplayed() || notification.isSkippedMoment()){
-          _googlePopupFallback();
-        }
-      });
-      return;
-    }catch(e2){}
+
+      // Render ปุ่ม Sign in with Google จริงๆ (ขึ้น account chooser)
+      var btnDiv = document.getElementById('g_id_signin_btn');
+      if(btnDiv){
+        google.accounts.id.renderButton(btnDiv, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 300
+        });
+        // ซ่อน fallback
+        var fb = document.getElementById('googleFallbackBtn');
+        if(fb) fb.style.display = 'none';
+      }
+    }catch(e){
+      // ถ้า render ไม่ได้ แสดง fallback
+      var fb = document.getElementById('googleFallbackBtn');
+      if(fb) fb.style.display = 'flex';
+    }
   }
-  _googlePopupFallback();
+
+  // ถ้า GSI โหลดแล้ว init ทันที ถ้ายังไม่โหลดให้รอ
+  if(window.google && google.accounts){ _doInit(); }
+  else{
+    var _gsiWait = setInterval(function(){
+      if(window.google && google.accounts){ clearInterval(_gsiWait); _doInit(); }
+    }, 100);
+    setTimeout(function(){
+      clearInterval(_gsiWait);
+      // timeout — แสดง fallback
+      var fb = document.getElementById('googleFallbackBtn');
+      if(fb) fb.style.display = 'flex';
+    }, 5000);
+  }
 }
 
-function _googlePopupFallback(){
-  // สร้าง account chooser modal แทน window.prompt()
-  _showGoogleAccountChooser();
+// ── ปุ่ม Google fallback — ใช้ Token Client (OAuth popup เต็มรูปแบบ) ────
+async function authGoogleSignIn(){
+  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  if(!clientId){ showToast('ระบบยังไม่พร้อม','error'); return; }
+
+  var btn = document.getElementById('googleFallbackBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; }
+
+  try{
+    if(window.google && google.accounts && google.accounts.oauth2){
+      google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'email profile openid',
+        prompt: 'select_account',
+        callback: function(tokenResp){
+          if(!tokenResp || !tokenResp.access_token){
+            if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+            showToast('Google Sign-In ถูกยกเลิก','error'); return;
+          }
+          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + tokenResp.access_token }
+          }).then(function(r){ return r.json(); })
+            .then(function(info){
+              var email = (info.email||'').toLowerCase().trim();
+              var name  = info.name || info.given_name || email;
+              if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+              if(email) _processGoogleLogin(email, name);
+              else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+            }).catch(function(){
+              if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+              showToast('Google Sign-In ล้มเหลว','error');
+            });
+        },
+        error_callback: function(){
+          if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+        }
+      }).requestAccessToken();
+    } else {
+      if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+      showToast('Google library ยังโหลดไม่เสร็จ ลองใหม่อีกครั้ง','error');
+    }
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+    showToast('Google Sign-In error: ' + e.message,'error');
+  }
 }
 
-function _showGoogleAccountChooser(){
-  var hints = [];
-  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
 
-  var existing = document.getElementById('_googleAccChooser');
-  if(existing) existing.remove();
-
-  // Build overlay
-  var overlay = document.createElement('div');
-  overlay.id = '_googleAccChooser';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
-  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-
-  // Card
-  var card = document.createElement('div');
-  card.style.cssText = 'background:#1a1e2a;border:1px solid #2a2f3d;border-radius:16px;width:360px;max-width:94vw;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.8);';
-
-  // --- Header ---
-  var hdr = document.createElement('div');
-  hdr.style.cssText = 'padding:18px 20px 0;display:flex;align-items:center;gap:10px;';
-
-  var gLogo = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  gLogo.setAttribute('width','22'); gLogo.setAttribute('height','22'); gLogo.setAttribute('viewBox','0 0 18 18');
-  gLogo.innerHTML = '<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>';
-
-  var titleWrap = document.createElement('div');
-  var titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#f4f6ff;';
-  titleEl.textContent = 'เลือกบัญชี';
-  var subEl = document.createElement('div');
-  subEl.style.cssText = 'font-size:10px;color:#7a8299;';
-  subEl.textContent = 'เพื่อเข้าสู่ TradeLog Pro+';
-  titleWrap.appendChild(titleEl);
-  titleWrap.appendChild(subEl);
-
-  var closeBtn = document.createElement('button');
-  closeBtn.textContent = '×';
-  closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:#7a8299;cursor:pointer;font-size:20px;line-height:1;padding:4px 0;';
-  closeBtn.onclick = function(){ overlay.remove(); };
-
-  hdr.appendChild(gLogo);
-  hdr.appendChild(titleWrap);
-  hdr.appendChild(closeBtn);
-  card.appendChild(hdr);
-
-  // --- Account list ---
-  var listWrap = document.createElement('div');
-  listWrap.style.cssText = 'max-height:280px;overflow-y:auto;margin-top:10px;';
-  var colors = ['#4f7aff','#2ecc8a','#f5a623','#a855f7','#22d3ee'];
-
-  hints.forEach(function(h, i){
-    var row = _buildAccRow(h.email, h.name, colors[i % colors.length]);
-    row.onclick = function(){ _selectGoogleAccount(h.email, h.name); };
-    listWrap.appendChild(row);
-  });
-
-  // "Use another account" row
-  var otherRow = document.createElement('div');
-  otherRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;';
-  otherRow.onmouseover = function(){ this.style.background='#252a38'; };
-  otherRow.onmouseout  = function(){ this.style.background='transparent'; };
-
-  var otherIcon = document.createElement('div');
-  otherIcon.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2f3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-  otherIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b0b7cc" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
-  var otherLabel = document.createElement('div');
-  otherLabel.style.cssText = 'font-size:13px;color:#b0b7cc;';
-  otherLabel.textContent = 'ใช้บัญชีอื่น';
-  otherRow.appendChild(otherIcon);
-  otherRow.appendChild(otherLabel);
-  otherRow.onclick = _googleManualEntry;
-  listWrap.appendChild(otherRow);
-  card.appendChild(listWrap);
-
-  // --- Manual input box ---
-  var manualBox = document.createElement('div');
-  manualBox.id = '_googleManualBox';
-  manualBox.style.cssText = 'display:none;padding:14px 20px;border-top:1px solid #2a2f3d;';
-
-  var emailLabel = document.createElement('div');
-  emailLabel.style.cssText = 'font-size:11px;color:#7a8299;margin-bottom:6px;';
-  emailLabel.textContent = 'กรอก Gmail ของคุณ';
-
-  var emailInput = document.createElement('input');
-  emailInput.id = '_googleEmailInput';
-  emailInput.type = 'email';
-  emailInput.placeholder = 'example@gmail.com';
-  emailInput.style.cssText = 'width:100%;background:#0f1117;border:1px solid #2a2f3d;color:#f4f6ff;border-radius:6px;padding:8px 11px;font-size:13px;outline:none;box-sizing:border-box;';
-  emailInput.onfocus = function(){ this.style.borderColor='#4f7aff'; };
-  emailInput.onblur  = function(){ this.style.borderColor='#2a2f3d'; };
-  emailInput.onkeydown = function(e){ if(e.key==='Enter') _googleManualSubmit(); };
-
-  var submitBtn = document.createElement('button');
-  submitBtn.textContent = 'ถัดไป';
-  submitBtn.style.cssText = 'width:100%;margin-top:8px;background:#4f7aff;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;';
-  submitBtn.onclick = _googleManualSubmit;
-
-  manualBox.appendChild(emailLabel);
-  manualBox.appendChild(emailInput);
-  manualBox.appendChild(submitBtn);
-  card.appendChild(manualBox);
-
-  // --- Footer note ---
-  var footer = document.createElement('div');
-  footer.style.cssText = 'padding:10px 20px;border-top:1px solid #2a2f3d;font-size:10px;color:#7a8299;text-align:center;';
-  footer.textContent = 'ระบบจะตรวจสอบ email กับฐานข้อมูลผู้ใช้';
-  card.appendChild(footer);
-
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-}
 
 function _buildAccRow(email, name, color){
   var row = document.createElement('div');
@@ -8763,22 +8697,6 @@ function dtUpdateFilterBadge(){
   badge.style.display=count?'inline':'none';
   badge.textContent=count+' active';
 }
-function dtDownloadTemplate(){
-  var headers=['Date','Portfolio','Asset','Session','Duration','SetupDuration','SetupClass','Candle','Code','Mode','TF','Zone','MitZone','Confirm','FiboLevel','Entry','TP','SL','Result','Side','Risk','PnL($)','MaxRR','EntryTime','Note','ImageLink'];
-  var example=[
-    ['2026-04-21','Port-A','GC','Tokyo','45','30','A','BullishEngulfing','OB','Breakout','15m','Supply','Supply','BOS','0.618','1920.50','1935.00','1915.00','Win','Long','50','130.00','2.6','08:09','OB entry at 0.618',''],
-    ['2026-04-21','Port-A','GC','London','30','20','B','BearishPin','FVG','Reversal','5m','Demand','','CHoCH','0.500','1918.00','1910.00','1922.00','Loss','Short','50','-50.00','0','09:45','SL hit','']
-  ];
-  var lines=[headers.join(',')];
-  example.forEach(function(r){ lines.push(r.map(function(v){return v.includes(',')?'"'+v+'"':v;}).join(',')); });
-  var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download='tradelog_import_template.csv';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
-  showToast('📄 ดาวน์โหลด Template แล้ว','success');
-}
 function dtOpenImport(){
   var ta=document.getElementById('importPasteArea');if(ta)ta.value='';
   var prev=document.getElementById('importPreview');if(prev){prev.style.display='none';prev.innerHTML='';}
@@ -8863,7 +8781,6 @@ function dtParseSheetData(raw){
 
   var cols={
     date:     hIdx(['date','วันที่']),
-    portfolio:hIdx(['portfolio','port','พอร์ต']),
     day:      hIdx(['day','วัน']),
     session:  hIdx(['session','เซสชัน']),
     asset:    hIdx(['asset','symbol','สินทรัพย์']),
@@ -8988,7 +8905,6 @@ function dtParseSheetData(raw){
     trades.push({
       _id:'imp_'+dateOnly+'_'+(entryTime||'')+'_'+(entry||'')+'_'+(g(row,'asset')||'')+'_'+i,
       date:dateOnly,
-      portfolio:g(row,'portfolio'),
       day:day||DT_DAYS[new Date(dateOnly).getDay()],
       session:g(row,'session'),
       asset:g(row,'asset'),
@@ -9026,31 +8942,7 @@ function dtPreviewImport(){
   var trades=dtParseSheetData(raw);
   var prev=document.getElementById('importPreview');
   if(!trades||!trades.length){if(prev){prev.style.display='block';prev.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px;">❌ ไม่พบข้อมูล — ตรวจ header และ separator</div>';}return;}
-  var cols=[
-    {k:'date',lbl:'Date'},{k:'portfolio',lbl:'Portfolio'},{k:'asset',lbl:'Asset'},{k:'side',lbl:'Side'},
-    {k:'session',lbl:'Session'},{k:'entryTime',lbl:'EntryTime'},{k:'duration',lbl:'Duration'},
-    {k:'setupDuration',lbl:'SetupDur'},{k:'setupClass',lbl:'Class'},{k:'candle',lbl:'Candle'},
-    {k:'code',lbl:'Code'},{k:'mode',lbl:'Mode'},{k:'tf',lbl:'TF'},
-    {k:'zone',lbl:'Zone'},{k:'zoneMit',lbl:'MitZone'},{k:'confirm',lbl:'Confirm'},
-    {k:'fiboLevel',lbl:'Fibo'},{k:'entry',lbl:'Entry'},{k:'tp',lbl:'TP'},{k:'sl',lbl:'SL'},
-    {k:'result',lbl:'Result'},{k:'risk',lbl:'Risk'},{k:'pnl',lbl:'PnL($)'},
-    {k:'maxRR',lbl:'MaxRR'},{k:'note',lbl:'Note'},{k:'imgLink',lbl:'ImageLink'}
-  ];
-  var th=cols.map(function(c){return '<th style="padding:4px 7px;white-space:nowrap;font-size:10px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-secondary);">'+c.lbl+'</th>';}).join('');
-  var rows=trades.map(function(t){
-    var rc=t.result==='Win'?'var(--green)':t.result==='Loss'?'var(--red)':'var(--amber)';
-    var tds=cols.map(function(c){
-      var v=t[c.k]||'';
-      var style='padding:3px 7px;white-space:nowrap;font-size:10px;border-bottom:1px solid var(--border);';
-      if(c.k==='result') style+='color:'+rc+';font-weight:600;';
-      else if(c.k==='entry'||c.k==='tp'||c.k==='sl'||c.k==='pnl'||c.k==='risk'||c.k==='maxRR') style+='font-family:var(--font-mono);text-align:right;';
-      else if(c.k==='side') style+='color:'+(v==='Long'?'var(--green)':'var(--red)')+';font-weight:600;';
-      else if(c.k==='entryTime') style+='font-family:var(--font-mono);';
-      return '<td style="'+style+'">'+v+'</td>';
-    }).join('');
-    return '<tr>'+tds+'</tr>';
-  }).join('');
-  if(prev){prev.style.display='block';prev.innerHTML='<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;">✅ พบ '+trades.length+' rows — ตัวอย่าง 10 แถวแรก:</div><div style="overflow-x:auto;max-height:320px;overflow-y:auto;"><table style="border-collapse:collapse;font-size:10px;white-space:nowrap;"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
+  if(prev){prev.style.display='block';prev.innerHTML='<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:6px;">✅ พบ '+trades.length+' rows — ตัวอย่าง:</div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:10px;min-width:500px;"><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:3px 6px;text-align:left;">Day</th><th style="padding:3px 6px;text-align:left;">Session</th><th style="padding:3px 6px;text-align:left;">Time</th><th style="padding:3px 6px;text-align:left;">Code</th><th style="padding:3px 6px;text-align:left;">Mode</th><th style="padding:3px 6px;text-align:right;">Entry</th><th style="padding:3px 6px;text-align:right;">TP</th><th style="padding:3px 6px;text-align:right;">SL</th><th style="padding:3px 6px;">Result</th><th style="padding:3px 6px;">Class</th></tr>'+trades.slice(0,6).map(function(t){var rc=t.result==='Win'||t.result==='TP'?'var(--green)':t.result==='Loss'||t.result==='SL'?'var(--red)':'var(--amber)';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:3px 6px;color:var(--text-muted);">'+t.day+'</td><td style="padding:3px 6px;">'+t.session+'</td><td style="padding:3px 6px;font-family:var(--font-mono);">'+t.entryTime+'</td><td style="padding:3px 6px;">'+t.code+'</td><td style="padding:3px 6px;">'+t.mode+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);">'+t.entry+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);color:var(--green);">'+t.tp+'</td><td style="padding:3px 6px;text-align:right;font-family:var(--font-mono);color:var(--red);">'+t.sl+'</td><td style="padding:3px 6px;color:'+rc+';">'+t.result+'</td><td style="padding:3px 6px;">'+t.setupClass+'</td></tr>';}).join('')+(trades.length>6?'<tr><td colspan="10" style="padding:3px 6px;color:var(--text-muted);text-align:center;">...อีก '+(trades.length-6)+' rows</td></tr>':'')+'</table></div></div>';}
 }
 function dtConfirmImport(){
   var raw=(document.getElementById('importPasteArea')||{}).value||'';
@@ -11050,14 +10942,9 @@ if(document.readyState==='loading'){
     </div>
     <div style="padding:16px 18px;">
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 13px;line-height:1.7;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
-          <div>
-            <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
-            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Date, Portfolio, Asset, Session, Duration, SetupDuration, SetupClass, Candle, Code, Mode, TF, Zone, MitZone, Confirm, FiboLevel, Entry, TP, SL, Result, Side, Risk, PnL($), MaxRR, EntryTime, Note, ImageLink</span><br>
-            <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
-          </div>
-          <button onclick="dtDownloadTemplate()" style="flex-shrink:0;background:none;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:var(--font-main);white-space:nowrap;" onmouseover="this.style.background='rgba(34,211,238,.1)'" onmouseout="this.style.background='none'">📄 ดาวน์โหลด Template</button>
-        </div>
+        <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
+        <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
       </div>
 
       <!-- Tab: Paste / Upload -->
