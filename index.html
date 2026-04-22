@@ -2643,18 +2643,9 @@ function _authInit(){
 
 // ── Google One Tap / Sign-In ───────────────────────────────────
 function _initGoogleOneTap(authUrl){
-  // One Tap ต้องใช้ Google Client ID — ถ้าไม่มีก็ใช้ popup แทน
-  var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(!clientId || !window.google) return;
-  try{
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: function(resp){ _handleGoogleCredential(resp.credential); },
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    google.accounts.id.prompt();
-  }catch(e){}
+  // ไม่ทำอะไรตอนโหลดหน้า — รอให้ user กดปุ่ม Google ก่อน
+  // การ initialize และ prompt จะเกิดใน authGoogleSignIn() เท่านั้น
+  // (ป้องกัน One Tap popup ขึ้นเองโดยไม่ได้กด)
 }
 
 // Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
