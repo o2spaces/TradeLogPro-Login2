@@ -563,8 +563,7 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
 }
 </script>
 
-<!-- Google Identity Services — โหลดแบบ async ปกติ (ไม่ใส่ defer เพื่อให้พร้อมใช้เร็วขึ้น) -->
-<script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Google Identity Services removed — ใช้ Direct OAuth Popup แทน -->
 
 <!-- ─── LOGIN OVERLAY ──────────────────────────────── -->
 <div id="authOverlay">
@@ -2652,144 +2651,107 @@ function _initGoogleOneTap(authUrl){
   // (ป้องกัน One Tap popup ขึ้นเองโดยไม่ได้กด)
 }
 
-// ── Google Sign-In — ใช้ id.initialize + ux_mode:'popup' ──────────────────
-// เรียกจากปุ่มโดยตรง → popup เปิดทันที ไม่ถูก browser block
+// ══════════════════════════════════════════════════════════════
+//  Google Sign-In — Direct OAuth2 Popup (ไม่ใช้ GSI library)
+//  window.open() เรียกตรงจาก onclick → ไม่ถูก browser block
+// ══════════════════════════════════════════════════════════════
+
+var _gPopup = null;
+var _gPoll  = null;
+
 function authGoogleSignIn(){
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  console.log('[TradeLog] authGoogleSignIn called, clientId:', clientId ? clientId.substring(0,20)+'...' : 'MISSING');
-  if(!clientId){
-    showToast('⚠️ ไม่พบ GOOGLE_CLIENT_ID ใน config.js','error'); return;
+  if(!clientId){ showToast('⚠️ ไม่พบ GOOGLE_CLIENT_ID ใน config.js','error'); return; }
+  if(window.location.protocol === 'file:'){
+    showToast('❌ ต้องเปิดผ่าน https:// เท่านั้น','error'); return;
   }
 
-  // ถ้า GSI library ยังโหลดไม่เสร็จ — โหลดใหม่แล้วรอ
-  if(!window.google || !window.google.accounts){
-    var btn = document.querySelector('.auth-google-btn');
-    if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; }
-    console.log('[TradeLog] GSI not ready, loading...');
-    // ลบ script เก่าออกก่อน (อาจโหลดค้าง) แล้วโหลดใหม่
-    var oldScript = document.querySelector('script[src*="accounts.google.com/gsi"]');
-    if(oldScript) oldScript.remove();
-    var s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload = function(){
-      if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
-      _doGooglePopup(clientId);
-    };
-    s.onerror = function(){
-      if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
-      showToast('❌ โหลด Google library ไม่ได้ — ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต','error');
-    };
-    document.head.appendChild(s);
-    return;
-  }
-
-  _doGooglePopup(clientId);
-}
-
-// ── Google Sign-In ด้วย Token Client (วิธีที่เสถียรที่สุด) ──
-// Token Client เป็น primary — trigger จาก click โดยตรงได้เสมอ
-// ไม่มีปัญหา "prompt blocked after dismiss" แบบ id.prompt()
-function _doGooglePopup(clientId){
   var btn = document.querySelector('.auth-google-btn');
-  console.log('[TradeLog] _doGooglePopup called');
-  console.log('[TradeLog] window.google:', typeof window.google);
-  console.log('[TradeLog] google.accounts:', window.google && typeof window.google.accounts);
-  console.log('[TradeLog] google.accounts.oauth2:', window.google && window.google.accounts && typeof window.google.accounts.oauth2);
+  function _restoreBtn(){ if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/></svg> เข้าสู่ระบบด้วย Google'; } }
 
-  // restore ปุ่มเสมอ — ไม่ว่า popup จะปิดแบบไหน
-  function _restoreBtn(){
-    if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
-  }
-  if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; }
+  // ปิด popup/poll เก่า
+  if(_gPoll){ clearInterval(_gPoll); _gPoll=null; }
+  if(_gPopup && !_gPopup.closed){ _gPopup.close(); }
 
-  // ─── วิธีที่ 1: Token Client (oauth2) ───
-  if(window.google && window.google.accounts && window.google.accounts.oauth2){
-    try{
-      var _tc = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'openid email profile',
-        prompt: 'select_account',       // บังคับแสดง account chooser ทุกครั้ง
-        callback: function(tokenResp){
-          _restoreBtn();
-          if(!tokenResp || tokenResp.error || !tokenResp.access_token){
-            if(tokenResp && tokenResp.error && tokenResp.error !== 'access_denied'){
-              console.warn('[TradeLog] Token client error:', tokenResp.error);
-            }
-            return;
-          }
-          // ดึง user info จาก Google
-          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { 'Authorization': 'Bearer ' + tokenResp.access_token }
-          })
-          .then(function(r){ return r.json(); })
-          .then(function(info){
-            var email = (info.email || '').toLowerCase().trim();
-            var name  = info.name || info.given_name || email;
-            if(email){
-              _processGoogleLogin(email, name);
-            } else {
-              showToast('ไม่สามารถดึง email จาก Google ได้','error');
-            }
-          })
-          .catch(function(err){
-            console.error('[TradeLog] userinfo fetch error:', err);
-            showToast('เชื่อมต่อ Google API ไม่ได้','error');
-          });
-        },
-        error_callback: function(err){
-          console.warn('[TradeLog] OAuth2 error_callback:', err);
-          _restoreBtn();
-          // ถ้าเป็น popup_closed หรือ access_denied — ไม่แสดง error
-          if(err && err.type === 'popup_closed') return;
-          if(err && err.type === 'popup_failed_to_open'){
-            // Popup ถูก block → fallback ไป id.initialize
-            _doGoogleIdSignIn(clientId, _restoreBtn);
-          }
-        }
-      });
-      _tc.requestAccessToken();
-      return;
-    }catch(e){
-      console.warn('[TradeLog] oauth2 initTokenClient failed:', e.message);
-      // ตก through ไปวิธีที่ 2
-    }
-  }
+  var redirectUri = window.location.origin + window.location.pathname;
+  // ตัด trailing slash ซ้ำ แล้ว normalize
+  redirectUri = redirectUri.replace(/\/+$/, '') + (window.location.pathname === '/' ? '/' : '');
 
-  // ─── วิธีที่ 2: id.initialize (ID token / One Tap) ───
-  _doGoogleIdSignIn(clientId, _restoreBtn);
-}
+  var oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id='    + encodeURIComponent(clientId)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=token'
+    + '&scope='        + encodeURIComponent('openid email profile')
+    + '&prompt=select_account';
 
-// ── Fallback: Google Sign-In ด้วย id.initialize ──────────────────
-function _doGoogleIdSignIn(clientId, _restoreBtn){
-  if(!window.google || !window.google.accounts || !window.google.accounts.id){
-    if(_restoreBtn) _restoreBtn();
-    showToast('Google Sign-In ไม่พร้อมใช้งาน กรุณารีโหลดหน้า','error');
+  // เปิด popup — ต้องเรียกตรงใน onclick ไม่ผ่าน async/setTimeout
+  var pw=500, ph=620;
+  var pleft = Math.max(0, Math.round((screen.width  - pw) / 2));
+  var ptop  = Math.max(0, Math.round((screen.height - ph) / 2));
+  _gPopup = window.open(
+    oauthUrl, '_gauth',
+    'width='+pw+',height='+ph+',left='+pleft+',top='+ptop+',resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no'
+  );
+
+  if(!_gPopup || _gPopup.closed){
+    showToast('⚠️ Browser block popup — คลิกไอคอน 🚫 ที่ address bar แล้วกด "Allow" แล้วลองใหม่','error');
     return;
   }
-  try{
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: function(resp){
-        if(_restoreBtn) _restoreBtn();
-        if(!resp || !resp.credential){
+
+  if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; btn.textContent='⏳ รอ Google...'; }
+
+  // Poll URL ของ popup ทุก 300ms — เมื่อ Google redirect กลับมา same-origin จะอ่าน URL ได้
+  _gPoll = setInterval(function(){
+    try{
+      if(!_gPopup || _gPopup.closed){
+        clearInterval(_gPoll); _gPoll=null;
+        _restoreBtn(); return;
+      }
+      var pu = _gPopup.location.href;
+      if(pu && pu.indexOf(window.location.origin) === 0){
+        // Google redirect กลับมาแล้ว — อ่าน token จาก hash
+        clearInterval(_gPoll); _gPoll=null;
+        _gPopup.close();
+        _restoreBtn();
+
+        var fragment = pu.split('#')[1] || pu.split('?')[1] || '';
+        var fp = {};
+        fragment.split('&').forEach(function(p){
+          var kv = p.split('=');
+          if(kv[0]) fp[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]||'');
+        });
+
+        if(fp.error){
+          if(fp.error !== 'access_denied') showToast('Google: ' + fp.error, 'error');
           return;
         }
-        _handleGoogleCredential(resp.credential);
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-      ux_mode: 'popup'
-    });
-    window.google.accounts.id.prompt(function(notification){
-      if(notification.isSkippedMoment() || notification.isDismissedMoment()){
-        if(_restoreBtn) _restoreBtn();
+        if(!fp.access_token){
+          showToast('ไม่ได้รับ token จาก Google','error'); return;
+        }
+
+        // ดึง email/name จาก Google
+        if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.textContent='⏳ กำลังตรวจสอบ...'; }
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+          headers:{ 'Authorization': 'Bearer ' + fp.access_token }
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(info){
+          var email = (info.email||'').toLowerCase().trim();
+          var name  = info.name || info.given_name || email;
+          if(!email){ _restoreBtn(); showToast('ไม่ได้รับ email จาก Google','error'); return; }
+          _processGoogleLogin(email, name);
+        })
+        .catch(function(){ _restoreBtn(); showToast('เชื่อมต่อ Google API ไม่ได้','error'); });
       }
-    });
-  }catch(e){
-    if(_restoreBtn) _restoreBtn();
-    console.error('[TradeLog] id.initialize error:', e.message);
-    showToast('Google Sign-In error: ' + e.message, 'error');
-  }
+    }catch(e){ /* cross-origin ยังรอ redirect */ }
+  }, 300);
+
+  // Timeout 3 นาที
+  setTimeout(function(){
+    if(_gPoll){ clearInterval(_gPoll); _gPoll=null; }
+    if(_gPopup && !_gPopup.closed){ _gPopup.close(); }
+    _restoreBtn();
+  }, 180000);
 }
 
 
