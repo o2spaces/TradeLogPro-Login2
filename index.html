@@ -853,7 +853,7 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
             <select id="dtfClass" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Candle <button onclick="event.stopPropagation();openDropEdit('dtfModel','Candle (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
             <select id="dtfModel" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
-          <div><div style="font-size:9px;color:var(--purple);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;font-weight:600;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
+          <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
             <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">Duration (≤ นาที)</div>
             <input type="number" id="dtfDur" placeholder="ไม่จำกัด" min="0" oninput="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"></div>
@@ -4995,7 +4995,12 @@ function closeM(id){
   if(!anyOpen) document.body.classList.remove('modal-open');
 }
 function openM(id){
-  document.getElementById(id).classList.add('open');
+  var el = document.getElementById(id);
+  if(!el) return;
+  // ย้าย element ไปเป็น last child ของ body ทุกครั้ง
+  // เพื่อให้อยู่เหนือ stacking context ทั้งหมด (รวม #dataView)
+  document.body.appendChild(el);
+  el.classList.add('open');
   document.body.classList.add('modal-open');
 }
 function mTab(el,id){document.querySelectorAll('.modal-tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');mTabById(id);}
