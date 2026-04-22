@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Auth Test v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:monospace;background:#0d0f14;color:#f4f6ff;padding:20px;max-width:680px;margin:0 auto;}
+h2{color:#4f7aff;margin-bottom:4px;font-size:16px;}
+p{color:#7a8299;font-size:12px;margin-bottom:20px;}
+.card{background:#1a1e2a;border:1px solid #2a2f3d;border-radius:10px;padding:16px;margin-bottom:14px;}
+.card h3{font-size:11px;color:#7a8299;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;}
+.row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #1f2330;font-size:12px;gap:10px;}
+.row:last-child{border:none;}
+.lbl{color:#7a8299;white-space:nowrap;flex-shrink:0;}
+.val{word-break:break-all;text-align:right;}
+.ok{color:#2ecc8a;} .err{color:#ff4d6a;} .warn{color:#f5a623;} .info{color:#4f7aff;}
+.uri-box{background:#0f1117;border:1px solid #4f7aff;border-radius:6px;padding:10px 12px;font-size:12px;color:#4f7aff;word-break:break-all;margin:10px 0;line-height:1.5;}
+button{background:#4f7aff;color:#fff;border:none;padding:9px 18px;border-radius:7px;font-size:12px;cursor:pointer;font-family:monospace;margin:4px 4px 4px 0;}
+button:hover{background:#6b91ff;}
+button.sec{background:#1a1e2a;border:1px solid #2a2f3d;color:#b0b7cc;}
+button.sec:hover{border-color:#4f7aff;color:#4f7aff;}
+button.green{background:#2ecc8a;color:#000;}
+button.green:hover{background:#3de09a;}
+#log{background:#0f1117;border:1px solid #2a2f3d;border-radius:8px;padding:12px;font-size:11px;line-height:1.9;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+.log-ok{color:#2ecc8a;} .log-err{color:#ff4d6a;} .log-warn{color:#f5a623;} .log-info{color:#4f7aff;} .log-dim{color:#7a8299;}
+input{background:#0f1117;border:1px solid #2a2f3d;color:#f4f6ff;border-radius:6px;padding:7px 10px;font-size:11px;font-family:monospace;width:100%;outline:none;margin-top:6px;}
+input:focus{border-color:#4f7aff;}
+</style>
+</head>
+<body>
+<h2>🔍 Google Auth Debug v2</h2>
+<p>อัปโหลดไฟล์นี้ที่ Vercel แล้วเปิด</p>
+
+<div class="card">
+  <h3>① redirect_uri ที่ต้องใส่ใน Google Console</h3>
+  <div class="row"><span class="lbl">Protocol</span><span class="val" id="v_protocol"></span></div>
+  <div class="row"><span class="lbl">Origin</span><span class="val info" id="v_origin"></span></div>
+  <div class="row"><span class="lbl">Pathname</span><span class="val" id="v_pathname"></span></div>
+  <div style="margin-top:10px;font-size:11px;color:#b0b7cc;margin-bottom:4px;">
+    ⚠️ Copy ค่านี้ไปใส่ใน <strong>Authorized redirect URIs</strong> ใน Google Console:
+  </div>
+  <div class="uri-box" id="v_redirect_uri">—</div>
+  <button onclick="copyUri()">📋 Copy</button>
+</div>
+
+<div class="card">
+  <h3>② Client ID</h3>
+  <input id="inp_cid" value="1008136012501-2a6m6ulfb99f5h8jrvc8arpak85t9ckk.apps.googleusercontent.com">
+</div>
+
+<div class="card">
+  <h3>③ ทดสอบ</h3>
+  <button class="green" onclick="testPopup()">▶ Popup Test</button>
+  <button class="sec" onclick="testRedirect()">↗ Redirect Test (ไม่ใช้ popup)</button>
+  <div style="margin-top:10px;font-size:12px;" id="popupStatus"></div>
+</div>
+
+<div class="card">
+  <h3>④ Log</h3>
+  <div id="log">พร้อม...\n</div>
+  <button class="sec" onclick="document.getElementById('log').textContent=''" style="margin-top:8px;">🗑 Clear</button>
+</div>
+
+<script>
+var _logEl = document.getElementById('log');
+function log(msg, cls){
+  var s = document.createElement('span');
+  s.className='log-'+(cls||'info');
+  s.textContent=new Date().toLocaleTimeString('th')+' '+msg+'\n';
+  _logEl.appendChild(s);
+  _logEl.scrollTop=9999;
+}
+
+var proto=location.protocol, origin=location.origin, pathname=location.pathname;
+var redirectUri=origin+pathname;
+
+document.getElementById('v_protocol').textContent=proto;
+document.getElementById('v_protocol').className='val '+(proto==='https:'?'ok':'err');
+document.getElementById('v_origin').textContent=origin;
+document.getElementById('v_pathname').textContent=pathname;
+document.getElementById('v_redirect_uri').textContent=redirectUri;
+
+function copyUri(){
+  navigator.clipboard.writeText(redirectUri)
+    .then(function(){ log('✅ Copied: '+redirectUri,'ok'); })
+    .catch(function(){ log('Copy manually: '+redirectUri,'warn'); });
+}
+
+// detect redirect-back token
+(function(){
+  var hash=location.hash.substring(1);
+  if(hash&&hash.indexOf('access_token')>=0){
+    var fp={};
+    hash.split('&').forEach(function(p){ var kv=p.split('='); fp[decodeURIComponent(kv[0])]=decodeURIComponent(kv[1]||''); });
+    if(fp.access_token){ log('✅ Redirect token detected!','ok'); fetchInfo(fp.access_token); }
+  }
+})();
+
+var _pop=null,_poll=null;
+
+function testPopup(){
+  var cid=document.getElementById('inp_cid').value.trim();
+  if(!cid){ log('❌ ใส่ Client ID ก่อน','err'); return; }
+  if(_poll){ clearInterval(_poll); _poll=null; }
+  if(_pop&&!_pop.closed){ _pop.close(); }
+
+  var url='https://accounts.google.com/o/oauth2/v2/auth'
+    +'?client_id='+encodeURIComponent(cid)
+    +'&redirect_uri='+encodeURIComponent(redirectUri)
+    +'&response_type=token'
+    +'&scope='+encodeURIComponent('openid email profile')
+    +'&prompt=select_account';
+
+  log('▶ Opening popup...','info');
+  log('  redirect_uri = '+redirectUri,'dim');
+
+  var pw=500,ph=620;
+  _pop=window.open(url,'_gtest','width='+pw+',height='+ph+',left='+Math.round((screen.width-pw)/2)+',top='+Math.round((screen.height-ph)/2)+',resizable=yes,scrollbars=yes');
+
+  if(!_pop||_pop.closed){
+    log('❌ Popup ถูก block','err');
+    document.getElementById('popupStatus').innerHTML='<span class="err">❌ Popup blocked — ปลด block ใน browser ก่อน</span>';
+    return;
+  }
+  log('✅ Popup เปิดแล้ว — รอ user เลือก account...','ok');
+  document.getElementById('popupStatus').innerHTML='<span class="warn">⏳ รอ Google...</span>';
+
+  _poll=setInterval(function(){
+    try{
+      if(!_pop||_pop.closed){
+        clearInterval(_poll);_poll=null;
+        document.getElementById('popupStatus').innerHTML='<span style="color:#7a8299;">Popup ปิด</span>';
+        return;
+      }
+      var pu=_pop.location.href;
+      if(pu&&pu.indexOf(origin)===0){
+        clearInterval(_poll);_poll=null;
+        _pop.close();
+        var frag=pu.split('#')[1]||pu.split('?')[1]||'';
+        var fp={};
+        frag.split('&').forEach(function(p){ var kv=p.split('='); if(kv[0]) fp[decodeURIComponent(kv[0])]=decodeURIComponent(kv[1]||''); });
+        log('✅ Redirect กลับมา fragment='+frag.substring(0,60)+'…','ok');
+        if(fp.error){
+          log('❌ Google error: '+fp.error,'err');
+          if(fp.error_description) log('  '+fp.error_description,'err');
+          document.getElementById('popupStatus').innerHTML='<span class="err">❌ '+fp.error+'</span>';
+          return;
+        }
+        if(fp.access_token){
+          log('✅ access_token OK','ok');
+          document.getElementById('popupStatus').innerHTML='<span class="ok">✅ ได้ token แล้ว!</span>';
+          fetchInfo(fp.access_token);
+        } else {
+          log('⚠️ ไม่มี token ใน fragment: '+frag,'warn');
+        }
+      }
+    }catch(e){}
+  },200);
+  setTimeout(function(){ if(_poll){clearInterval(_poll);_poll=null;} if(_pop&&!_pop.closed){_pop.close();} },120000);
+}
+
+function testRedirect(){
+  var cid=document.getElementById('inp_cid').value.trim();
+  if(!cid){ log('❌ ใส่ Client ID ก่อน','err'); return; }
+  var url='https://accounts.google.com/o/oauth2/v2/auth'
+    +'?client_id='+encodeURIComponent(cid)
+    +'&redirect_uri='+encodeURIComponent(redirectUri)
+    +'&response_type=token'
+    +'&scope='+encodeURIComponent('openid email profile')
+    +'&prompt=select_account';
+  log('↗ Redirecting... (หน้านี้จะโหลดใหม่หลัง Google redirect กลับ)','warn');
+  location.href=url;
+}
+
+function fetchInfo(token){
+  log('🔄 ดึง user info...','dim');
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{'Authorization':'Bearer '+token}})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    log('✅ email: '+d.email,'ok');
+    log('✅ name:  '+d.name,'ok');
+    document.getElementById('popupStatus').innerHTML='<span class="ok">✅ email: <strong>'+d.email+'</strong></span>';
+  })
+  .catch(function(e){ log('❌ userinfo error: '+e.message,'err'); });
+}
+</script>
+</body>
+</html>
