@@ -2652,12 +2652,65 @@ function _initGoogleOneTap(authUrl){
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Google Sign-In — Direct OAuth2 Popup (ไม่ใช้ GSI library)
-//  window.open() เรียกตรงจาก onclick → ไม่ถูก browser block
+//  Google Sign-In — Popup + Auto-Redirect Fallback
+//  1) ลอง window.open() popup ก่อน (เร็วกว่า, ไม่ออกจากหน้า)
+//  2) ถ้า popup ถูก block → redirect ทั้งหน้าแทน (ทำงานได้เสมอ)
+//  3) เมื่อ Google redirect กลับมา → อ่าน token จาก URL hash
 // ══════════════════════════════════════════════════════════════
 
 var _gPopup = null;
 var _gPoll  = null;
+
+// ── ตรวจ redirect ที่ Google ส่งกลับมา (กรณี Direct mode) ────
+(function _checkGoogleRedirectOnLoad(){
+  try{
+    var hash = window.location.hash || window.location.search;
+    if(!hash) return;
+    var fp = {};
+    (hash.replace(/^[#?]/,'')).split('&').forEach(function(p){
+      var kv = p.split('=');
+      if(kv[0]) fp[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]||'');
+    });
+    if(!fp.access_token && !fp.error) return;
+
+    // ล้าง token ออกจาก URL ทันที (ไม่ให้ติด history)
+    try{ history.replaceState(null,'', window.location.pathname); }catch(e){}
+
+    if(fp.error){
+      if(fp.error !== 'access_denied'){
+        // แสดง error หลัง DOM พร้อม
+        window.addEventListener('DOMContentLoaded', function(){
+          showToast('Google: ' + fp.error, 'error');
+        });
+      }
+      return;
+    }
+
+    // ดึง email/name แล้ว login — รอให้ DOM โหลดเสร็จก่อน
+    window.addEventListener('DOMContentLoaded', function(){
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+        headers:{ 'Authorization': 'Bearer ' + fp.access_token }
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(info){
+        var email = (info.email||'').toLowerCase().trim();
+        var name  = info.name || info.given_name || email;
+        if(!email){ showToast('ไม่ได้รับ email จาก Google','error'); return; }
+        _processGoogleLogin(email, name);
+      })
+      .catch(function(){ showToast('เชื่อมต่อ Google API ไม่ได้','error'); });
+    });
+  }catch(e){}
+})();
+
+function _buildOAuthUrl(clientId, redirectUri){
+  return 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id='    + encodeURIComponent(clientId)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=token'
+    + '&scope='        + encodeURIComponent('openid email profile')
+    + '&prompt=select_account';
+}
 
 function authGoogleSignIn(){
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
@@ -2674,17 +2727,11 @@ function authGoogleSignIn(){
   if(_gPopup && !_gPopup.closed){ _gPopup.close(); }
 
   var redirectUri = window.location.origin + window.location.pathname;
-  // ตัด trailing slash ซ้ำ แล้ว normalize
   redirectUri = redirectUri.replace(/\/+$/, '') + (window.location.pathname === '/' ? '/' : '');
 
-  var oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
-    + '?client_id='    + encodeURIComponent(clientId)
-    + '&redirect_uri=' + encodeURIComponent(redirectUri)
-    + '&response_type=token'
-    + '&scope='        + encodeURIComponent('openid email profile')
-    + '&prompt=select_account';
+  var oauthUrl = _buildOAuthUrl(clientId, redirectUri);
 
-  // เปิด popup — ต้องเรียกตรงใน onclick ไม่ผ่าน async/setTimeout
+  // ── ลอง Popup mode ก่อน ───────────────────────────────────
   var pw=500, ph=620;
   var pleft = Math.max(0, Math.round((screen.width  - pw) / 2));
   var ptop  = Math.max(0, Math.round((screen.height - ph) / 2));
@@ -2693,14 +2740,18 @@ function authGoogleSignIn(){
     'width='+pw+',height='+ph+',left='+pleft+',top='+ptop+',resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no'
   );
 
-  if(!_gPopup || _gPopup.closed){
-    showToast('⚠️ Browser block popup — คลิกไอคอน 🚫 ที่ address bar แล้วกด "Allow" แล้วลองใหม่','error');
+  // ── Popup ถูก block → ใช้ Direct Redirect แทน ─────────────
+  if(!_gPopup || _gPopup.closed || typeof _gPopup.closed === 'undefined'){
+    // แสดงข้อความแจ้งแล้ว redirect หน้าทั้งหน้า
+    if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; btn.innerHTML='⏳ กำลัง redirect ไป Google...'; }
+    showToast('🔄 Popup ถูก Block — กำลัง redirect ไป Google...','error');
+    setTimeout(function(){ window.location.href = oauthUrl; }, 800);
     return;
   }
 
   if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; btn.textContent='⏳ รอ Google...'; }
 
-  // Poll URL ของ popup ทุก 300ms — เมื่อ Google redirect กลับมา same-origin จะอ่าน URL ได้
+  // ── Poll URL ของ popup (Popup mode) ───────────────────────
   _gPoll = setInterval(function(){
     try{
       if(!_gPopup || _gPopup.closed){
@@ -2709,7 +2760,6 @@ function authGoogleSignIn(){
       }
       var pu = _gPopup.location.href;
       if(pu && pu.indexOf(window.location.origin) === 0){
-        // Google redirect กลับมาแล้ว — อ่าน token จาก hash
         clearInterval(_gPoll); _gPoll=null;
         _gPopup.close();
         _restoreBtn();
@@ -2729,7 +2779,6 @@ function authGoogleSignIn(){
           showToast('ไม่ได้รับ token จาก Google','error'); return;
         }
 
-        // ดึง email/name จาก Google
         if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.textContent='⏳ กำลังตรวจสอบ...'; }
         fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
           headers:{ 'Authorization': 'Bearer ' + fp.access_token }
