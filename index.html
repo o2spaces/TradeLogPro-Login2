@@ -2648,231 +2648,104 @@ function _initGoogleOneTap(authUrl){
   // (ป้องกัน One Tap popup ขึ้นเองโดยไม่ได้กด)
 }
 
-// Google Sign-In button handler — ใช้ GAS Auth ตรงๆ (ไม่ต้อง OAuth Console)
-async function authGoogleSignIn(){
-  var url = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(!url){ showToast('ระบบยังไม่พร้อม','error'); return; }
-
+// ── Google Sign-In — ใช้ id.initialize + ux_mode:'popup' ──────────────────
+// เรียกจากปุ่มโดยตรง → popup เปิดทันที ไม่ถูก browser block
+function authGoogleSignIn(){
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
-  if(clientId && window.google && google.accounts){
-    // ใช้ OAuth2 popup แบบ select_account เพื่อแสดง account chooser เหมือน Google Sign-In จริงๆ
-    if(google.accounts.oauth2){
-      try{
-        google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: 'email profile',
-          prompt: 'select_account',
-          callback: function(tokenResp){
-            if(tokenResp && tokenResp.access_token){
-              fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: 'Bearer ' + tokenResp.access_token }
-              }).then(function(r){ return r.json(); })
-                .then(function(info){
-                  var email = (info.email || '').toLowerCase().trim();
-                  var name  = info.name || email;
-                  if(email) _processGoogleLogin(email, name);
-                  else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-                }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
-            }
-          }
-        }).requestAccessToken();
-        return;
-      }catch(e){}
-    }
-    // fallback: One Tap popup mode
-    try{
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: function(resp){ _handleGoogleCredential(resp.credential); },
-        ux_mode: 'popup'
-      });
-      google.accounts.id.prompt(function(notification){
-        if(notification.isNotDisplayed() || notification.isSkippedMoment()){
-          _googlePopupFallback();
-        }
-      });
-      return;
-    }catch(e2){}
+  if(!clientId){
+    showToast('⚠️ ไม่พบ GOOGLE_CLIENT_ID ใน config.js','error'); return;
   }
-  _googlePopupFallback();
-}
 
-function _googlePopupFallback(){
-  // สร้าง account chooser modal แทน window.prompt()
-  _showGoogleAccountChooser();
-}
-
-function _showGoogleAccountChooser(){
-  var hints = [];
-  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
-
-  var existing = document.getElementById('_googleAccChooser');
-  if(existing) existing.remove();
-
-  // Build overlay
-  var overlay = document.createElement('div');
-  overlay.id = '_googleAccChooser';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
-  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-
-  // Card
-  var card = document.createElement('div');
-  card.style.cssText = 'background:#1a1e2a;border:1px solid #2a2f3d;border-radius:16px;width:360px;max-width:94vw;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.8);';
-
-  // --- Header ---
-  var hdr = document.createElement('div');
-  hdr.style.cssText = 'padding:18px 20px 0;display:flex;align-items:center;gap:10px;';
-
-  var gLogo = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  gLogo.setAttribute('width','22'); gLogo.setAttribute('height','22'); gLogo.setAttribute('viewBox','0 0 18 18');
-  gLogo.innerHTML = '<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>';
-
-  var titleWrap = document.createElement('div');
-  var titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-size:14px;font-weight:700;color:#f4f6ff;';
-  titleEl.textContent = 'เลือกบัญชี';
-  var subEl = document.createElement('div');
-  subEl.style.cssText = 'font-size:10px;color:#7a8299;';
-  subEl.textContent = 'เพื่อเข้าสู่ TradeLog Pro+';
-  titleWrap.appendChild(titleEl);
-  titleWrap.appendChild(subEl);
-
-  var closeBtn = document.createElement('button');
-  closeBtn.textContent = '×';
-  closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:#7a8299;cursor:pointer;font-size:20px;line-height:1;padding:4px 0;';
-  closeBtn.onclick = function(){ overlay.remove(); };
-
-  hdr.appendChild(gLogo);
-  hdr.appendChild(titleWrap);
-  hdr.appendChild(closeBtn);
-  card.appendChild(hdr);
-
-  // --- Account list ---
-  var listWrap = document.createElement('div');
-  listWrap.style.cssText = 'max-height:280px;overflow-y:auto;margin-top:10px;';
-  var colors = ['#4f7aff','#2ecc8a','#f5a623','#a855f7','#22d3ee'];
-
-  hints.forEach(function(h, i){
-    var row = _buildAccRow(h.email, h.name, colors[i % colors.length]);
-    row.onclick = function(){ _selectGoogleAccount(h.email, h.name); };
-    listWrap.appendChild(row);
-  });
-
-  // "Use another account" row
-  var otherRow = document.createElement('div');
-  otherRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;';
-  otherRow.onmouseover = function(){ this.style.background='#252a38'; };
-  otherRow.onmouseout  = function(){ this.style.background='transparent'; };
-
-  var otherIcon = document.createElement('div');
-  otherIcon.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2f3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-  otherIcon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b0b7cc" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
-  var otherLabel = document.createElement('div');
-  otherLabel.style.cssText = 'font-size:13px;color:#b0b7cc;';
-  otherLabel.textContent = 'ใช้บัญชีอื่น';
-  otherRow.appendChild(otherIcon);
-  otherRow.appendChild(otherLabel);
-  otherRow.onclick = _googleManualEntry;
-  listWrap.appendChild(otherRow);
-  card.appendChild(listWrap);
-
-  // --- Manual input box ---
-  var manualBox = document.createElement('div');
-  manualBox.id = '_googleManualBox';
-  manualBox.style.cssText = 'display:none;padding:14px 20px;border-top:1px solid #2a2f3d;';
-
-  var emailLabel = document.createElement('div');
-  emailLabel.style.cssText = 'font-size:11px;color:#7a8299;margin-bottom:6px;';
-  emailLabel.textContent = 'กรอก Gmail ของคุณ';
-
-  var emailInput = document.createElement('input');
-  emailInput.id = '_googleEmailInput';
-  emailInput.type = 'email';
-  emailInput.placeholder = 'example@gmail.com';
-  emailInput.style.cssText = 'width:100%;background:#0f1117;border:1px solid #2a2f3d;color:#f4f6ff;border-radius:6px;padding:8px 11px;font-size:13px;outline:none;box-sizing:border-box;';
-  emailInput.onfocus = function(){ this.style.borderColor='#4f7aff'; };
-  emailInput.onblur  = function(){ this.style.borderColor='#2a2f3d'; };
-  emailInput.onkeydown = function(e){ if(e.key==='Enter') _googleManualSubmit(); };
-
-  var submitBtn = document.createElement('button');
-  submitBtn.textContent = 'ถัดไป';
-  submitBtn.style.cssText = 'width:100%;margin-top:8px;background:#4f7aff;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;';
-  submitBtn.onclick = _googleManualSubmit;
-
-  manualBox.appendChild(emailLabel);
-  manualBox.appendChild(emailInput);
-  manualBox.appendChild(submitBtn);
-  card.appendChild(manualBox);
-
-  // --- Footer note ---
-  var footer = document.createElement('div');
-  footer.style.cssText = 'padding:10px 20px;border-top:1px solid #2a2f3d;font-size:10px;color:#7a8299;text-align:center;';
-  footer.textContent = 'ระบบจะตรวจสอบ email กับฐานข้อมูลผู้ใช้';
-  card.appendChild(footer);
-
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-}
-
-function _buildAccRow(email, name, color){
-  var row = document.createElement('div');
-  row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;transition:background .12s;border-bottom:1px solid #2a2f3d;';
-  row.onmouseover = function(){ this.style.background='#252a38'; };
-  row.onmouseout  = function(){ this.style.background='transparent'; };
-  var initials = (name||email).charAt(0).toUpperCase();
-  var avatar = document.createElement('div');
-  avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;';
-  avatar.textContent = initials;
-  var info = document.createElement('div');
-  var nameEl = document.createElement('div');
-  nameEl.style.cssText = 'font-size:13px;font-weight:500;color:#f4f6ff;';
-  nameEl.textContent = name || email;
-  var emailEl = document.createElement('div');
-  emailEl.style.cssText = 'font-size:11px;color:#7a8299;';
-  emailEl.textContent = email;
-  info.appendChild(nameEl);
-  info.appendChild(emailEl);
-  row.appendChild(avatar);
-  row.appendChild(info);
-  return row;
-}
-
-
-function _selectGoogleAccount(email, name){
-  var overlay = document.getElementById('_googleAccChooser');
-  if(overlay) overlay.remove();
-  _processGoogleLogin(email.trim().toLowerCase(), name||email);
-}
-
-function _googleManualEntry(){
-  var box = document.getElementById('_googleManualBox');
-  if(box){
-    box.style.display = 'block';
-    var inp = document.getElementById('_googleEmailInput');
-    if(inp) setTimeout(function(){ inp.focus(); }, 50);
-  }
-}
-
-function _googleManualSubmit(){
-  var inp = document.getElementById('_googleEmailInput');
-  var email = (inp ? inp.value : '').trim().toLowerCase();
-  if(!email || !email.includes('@')){
-    if(inp){ inp.style.borderColor='#ff4d6a'; setTimeout(function(){ inp.style.borderColor='#2a2f3d'; },1500); }
+  // ถ้า GSI ยังไม่โหลด — รอสูงสุด 5 วินาที
+  if(!window.google || !window.google.accounts || !window.google.accounts.id){
+    var waited = 0;
+    var iv = setInterval(function(){
+      waited += 200;
+      if(window.google && window.google.accounts && window.google.accounts.id){
+        clearInterval(iv); _doGooglePopup(clientId);
+      } else if(waited >= 5000){
+        clearInterval(iv);
+        showToast('Google library โหลดไม่ได้ กรุณาตรวจสอบ network','error');
+      }
+    }, 200);
     return;
   }
-  var name = email.split('@')[0];
-  // บันทึกเป็น hint สำหรับครั้งต่อไป
-  var hints = [];
-  try{ hints = JSON.parse(localStorage.getItem('tj_google_hints')||'[]'); }catch(e){}
-  if(!hints.find(function(h){ return h.email===email; })){
-    hints.unshift({ email: email, name: name });
-    if(hints.length > 5) hints = hints.slice(0,5);
-    localStorage.setItem('tj_google_hints', JSON.stringify(hints));
-  }
-  var overlay = document.getElementById('_googleAccChooser');
-  if(overlay) overlay.remove();
-  _processGoogleLogin(email, name);
+  _doGooglePopup(clientId);
 }
+
+function _doGooglePopup(clientId){
+  var btn = document.querySelector('.auth-google-btn');
+  function _restoreBtn(){ if(btn){ btn.disabled=false; btn.style.opacity='1'; } }
+  if(btn){ btn.disabled=true; btn.style.opacity='.65'; }
+
+  try{
+    // initialize ใหม่ทุกครั้งที่กด
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: function(resp){
+        _restoreBtn();
+        if(resp && resp.credential){
+          _handleGoogleCredential(resp.credential);
+        } else {
+          showToast('Google Sign-In ถูกยกเลิก','error');
+        }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      ux_mode: 'popup',
+      context: 'signin'
+    });
+
+    // prompt → เปิด account chooser popup
+    google.accounts.id.prompt(function(notification){
+      if(notification.isNotDisplayed()){
+        // popup ถูก block — ลอง Token Client fallback
+        _restoreBtn();
+        _googleTokenFallback(clientId);
+      } else if(notification.isSkippedMoment()){
+        _restoreBtn();
+      }
+      // isDisplayed = popup เปิดปกติ — รอ user เลือก
+    });
+  }catch(e){
+    _restoreBtn();
+    // ถ้า id.initialize ล้มเหลว ลอง Token Client
+    _googleTokenFallback(clientId);
+  }
+}
+
+// Token Client fallback — สำหรับ browser ที่ block id.prompt()
+function _googleTokenFallback(clientId){
+  if(!window.google || !google.accounts || !google.accounts.oauth2){
+    showToast('ไม่สามารถเปิด Google Sign-In ได้','error'); return;
+  }
+  try{
+    var tc = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'email profile openid',
+      prompt: 'select_account',
+      callback: function(tokenResp){
+        if(!tokenResp || !tokenResp.access_token){
+          showToast('Google Sign-In ถูกยกเลิก','error'); return;
+        }
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+          headers:{ Authorization:'Bearer '+tokenResp.access_token }
+        }).then(function(r){ return r.json(); })
+          .then(function(info){
+            var email=(info.email||'').toLowerCase().trim();
+            var name=info.name||info.given_name||email;
+            if(email) _processGoogleLogin(email, name);
+            else showToast('ไม่สามารถดึง email จาก Google ได้','error');
+          }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
+      },
+      error_callback: function(){}
+    });
+    tc.requestAccessToken();
+  }catch(e){
+    showToast('Google Sign-In error: '+e.message,'error');
+  }
+}
+
 
 async function _handleGoogleCredential(credential){
   // Decode JWT payload (ไม่ต้อง verify signature เพราะ GAS จะ verify เอง)
