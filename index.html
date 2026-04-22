@@ -400,6 +400,8 @@ body.data-mode-open .portfolio-bar {
 /* ── Data Mode: ยก modal ให้อยู่เหนือ dataView stacking context ── */
 body.data-mode-open .modal-backdrop{z-index:9000;}
 body.data-mode-open .modal-backdrop.open{z-index:9000;}
+/* mDataTrade ต้องอยู่เหนือ #dataView (z-index:10) เสมอ */
+#mDataTrade{z-index:99999 !important;}
 .modal{background:var(--bg-card);border:1px solid var(--border);border-radius:13px;width:min(600px,94vw);max-width:96vw;max-height:91vh;overflow-y:auto;transform:translateY(14px);transition:transform .2s,width .2s,height .2s,max-width .2s,max-height .2s,border-radius .2s;}
 /* When sidebars collapse, allow modal to breathe wider */
 .layout.left-collapsed ~ .modal-backdrop .modal,
@@ -852,7 +854,7 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">Candle <button onclick="event.stopPropagation();openDropEdit('dtfModel','Candle (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
             <select id="dtfModel" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--purple);margin-bottom:3px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;font-weight:600;">Fibo <button onclick="event.stopPropagation();openDropEdit('dtfFibo','Fibo (Filter)')" style="font-size:8px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎</button></div>
-            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;font-family:var(--font-mono);"><option value="">All</option></select></div>
+            <select id="dtfFibo" onchange="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"><option value="">All</option></select></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">Duration (≤ นาที)</div>
             <input type="number" id="dtfDur" placeholder="ไม่จำกัด" min="0" oninput="dtSaveFilterState();dtRender()" style="width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;font-size:11px;padding:4px 6px;height:28px;"></div>
           <div><div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;">&#x23F0; Entry Time</div>
@@ -1390,7 +1392,7 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
                 </div>
                 <div>
                   <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('oFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-                  <select class="form-input" id="oFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
+                  <select class="form-input" id="oFiboLevel"><option value="">Select</option></select>
                 </div>
               </div>
             </div>
@@ -2652,65 +2654,12 @@ function _initGoogleOneTap(authUrl){
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Google Sign-In — Popup + Auto-Redirect Fallback
-//  1) ลอง window.open() popup ก่อน (เร็วกว่า, ไม่ออกจากหน้า)
-//  2) ถ้า popup ถูก block → redirect ทั้งหน้าแทน (ทำงานได้เสมอ)
-//  3) เมื่อ Google redirect กลับมา → อ่าน token จาก URL hash
+//  Google Sign-In — Direct OAuth2 Popup (ไม่ใช้ GSI library)
+//  window.open() เรียกตรงจาก onclick → ไม่ถูก browser block
 // ══════════════════════════════════════════════════════════════
 
 var _gPopup = null;
 var _gPoll  = null;
-
-// ── ตรวจ redirect ที่ Google ส่งกลับมา (กรณี Direct mode) ────
-(function _checkGoogleRedirectOnLoad(){
-  try{
-    var hash = window.location.hash || window.location.search;
-    if(!hash) return;
-    var fp = {};
-    (hash.replace(/^[#?]/,'')).split('&').forEach(function(p){
-      var kv = p.split('=');
-      if(kv[0]) fp[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]||'');
-    });
-    if(!fp.access_token && !fp.error) return;
-
-    // ล้าง token ออกจาก URL ทันที (ไม่ให้ติด history)
-    try{ history.replaceState(null,'', window.location.pathname); }catch(e){}
-
-    if(fp.error){
-      if(fp.error !== 'access_denied'){
-        // แสดง error หลัง DOM พร้อม
-        window.addEventListener('DOMContentLoaded', function(){
-          showToast('Google: ' + fp.error, 'error');
-        });
-      }
-      return;
-    }
-
-    // ดึง email/name แล้ว login — รอให้ DOM โหลดเสร็จก่อน
-    window.addEventListener('DOMContentLoaded', function(){
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
-        headers:{ 'Authorization': 'Bearer ' + fp.access_token }
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(info){
-        var email = (info.email||'').toLowerCase().trim();
-        var name  = info.name || info.given_name || email;
-        if(!email){ showToast('ไม่ได้รับ email จาก Google','error'); return; }
-        _processGoogleLogin(email, name);
-      })
-      .catch(function(){ showToast('เชื่อมต่อ Google API ไม่ได้','error'); });
-    });
-  }catch(e){}
-})();
-
-function _buildOAuthUrl(clientId, redirectUri){
-  return 'https://accounts.google.com/o/oauth2/v2/auth'
-    + '?client_id='    + encodeURIComponent(clientId)
-    + '&redirect_uri=' + encodeURIComponent(redirectUri)
-    + '&response_type=token'
-    + '&scope='        + encodeURIComponent('openid email profile')
-    + '&prompt=select_account';
-}
 
 function authGoogleSignIn(){
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
@@ -2727,11 +2676,17 @@ function authGoogleSignIn(){
   if(_gPopup && !_gPopup.closed){ _gPopup.close(); }
 
   var redirectUri = window.location.origin + window.location.pathname;
+  // ตัด trailing slash ซ้ำ แล้ว normalize
   redirectUri = redirectUri.replace(/\/+$/, '') + (window.location.pathname === '/' ? '/' : '');
 
-  var oauthUrl = _buildOAuthUrl(clientId, redirectUri);
+  var oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id='    + encodeURIComponent(clientId)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=token'
+    + '&scope='        + encodeURIComponent('openid email profile')
+    + '&prompt=select_account';
 
-  // ── ลอง Popup mode ก่อน ───────────────────────────────────
+  // เปิด popup — ต้องเรียกตรงใน onclick ไม่ผ่าน async/setTimeout
   var pw=500, ph=620;
   var pleft = Math.max(0, Math.round((screen.width  - pw) / 2));
   var ptop  = Math.max(0, Math.round((screen.height - ph) / 2));
@@ -2740,18 +2695,14 @@ function authGoogleSignIn(){
     'width='+pw+',height='+ph+',left='+pleft+',top='+ptop+',resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no'
   );
 
-  // ── Popup ถูก block → ใช้ Direct Redirect แทน ─────────────
-  if(!_gPopup || _gPopup.closed || typeof _gPopup.closed === 'undefined'){
-    // แสดงข้อความแจ้งแล้ว redirect หน้าทั้งหน้า
-    if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; btn.innerHTML='⏳ กำลัง redirect ไป Google...'; }
-    showToast('🔄 Popup ถูก Block — กำลัง redirect ไป Google...','error');
-    setTimeout(function(){ window.location.href = oauthUrl; }, 800);
+  if(!_gPopup || _gPopup.closed){
+    showToast('⚠️ Browser block popup — คลิกไอคอน 🚫 ที่ address bar แล้วกด "Allow" แล้วลองใหม่','error');
     return;
   }
 
   if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; btn.textContent='⏳ รอ Google...'; }
 
-  // ── Poll URL ของ popup (Popup mode) ───────────────────────
+  // Poll URL ของ popup ทุก 300ms — เมื่อ Google redirect กลับมา same-origin จะอ่าน URL ได้
   _gPoll = setInterval(function(){
     try{
       if(!_gPopup || _gPopup.closed){
@@ -2760,6 +2711,7 @@ function authGoogleSignIn(){
       }
       var pu = _gPopup.location.href;
       if(pu && pu.indexOf(window.location.origin) === 0){
+        // Google redirect กลับมาแล้ว — อ่าน token จาก hash
         clearInterval(_gPoll); _gPoll=null;
         _gPopup.close();
         _restoreBtn();
@@ -2779,6 +2731,7 @@ function authGoogleSignIn(){
           showToast('ไม่ได้รับ token จาก Google','error'); return;
         }
 
+        // ดึง email/name จาก Google
         if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.textContent='⏳ กำลังตรวจสอบ...'; }
         fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
           headers:{ 'Authorization': 'Bearer ' + fp.access_token }
@@ -10933,7 +10886,7 @@ if(document.readyState==='loading'){
             </div>
             <div>
               <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Fibo Level <button onclick="openDropEdit('dtFiboLevel','Fibo Level')" style="font-size:9px;background:none;border:none;color:var(--accent);cursor:pointer;padding:0;">✎ Edit</button></div>
-              <select class="form-input" id="dtFiboLevel" style="font-family:var(--font-mono);"><option value="">Select</option></select>
+              <select class="form-input" id="dtFiboLevel"><option value="">Select</option></select>
             </div>
           </div>
         </div>
