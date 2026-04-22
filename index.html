@@ -2655,100 +2655,72 @@ function authGoogleSignIn(){
   if(!clientId){
     showToast('⚠️ ไม่พบ GOOGLE_CLIENT_ID ใน config.js','error'); return;
   }
-
-  // ถ้า GSI ยังไม่โหลด — รอสูงสุด 5 วินาที
-  if(!window.google || !window.google.accounts || !window.google.accounts.id){
-    var waited = 0;
-    var iv = setInterval(function(){
-      waited += 200;
-      if(window.google && window.google.accounts && window.google.accounts.id){
-        clearInterval(iv); _doGooglePopup(clientId);
-      } else if(waited >= 5000){
-        clearInterval(iv);
-        showToast('Google library โหลดไม่ได้ กรุณาตรวจสอบ network','error');
-      }
-    }, 200);
-    return;
-  }
+  // เรียก _doGooglePopup โดยตรงจาก user click — ห้ามใช้ setTimeout/setInterval
+  // เพราะ requestAccessToken() ต้องอยู่ใน call stack ของ user gesture
   _doGooglePopup(clientId);
 }
 
+// ── Google Sign-In ด้วย Token Client (วิธีที่เสถียรที่สุด) ──
+// Token Client เป็น primary — trigger จาก click โดยตรงได้เสมอ
+// ไม่มีปัญหา "prompt blocked after dismiss" แบบ id.prompt()
 function _doGooglePopup(clientId){
   var btn = document.querySelector('.auth-google-btn');
-  function _restoreBtn(){ if(btn){ btn.disabled=false; btn.style.opacity='1'; } }
-  if(btn){ btn.disabled=true; btn.style.opacity='.65'; }
+
+  // restore ปุ่มเสมอ — ไม่ว่า popup จะปิดแบบไหน
+  function _restoreBtn(){
+    if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
+  }
+  if(btn){ btn.disabled=true; btn.style.opacity='.65'; btn.style.cursor='wait'; }
+
+  // ต้องมี google.accounts.oauth2
+  if(!window.google || !window.google.accounts || !window.google.accounts.oauth2){
+    _restoreBtn();
+    showToast('Google library ยังโหลดไม่เสร็จ กรุณารอสักครู่','error');
+    return;
+  }
 
   try{
-    // initialize ใหม่ทุกครั้งที่กด
-    google.accounts.id.initialize({
+    var _tc = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      callback: function(resp){
+      scope: 'openid email profile',
+      prompt: 'select_account',       // บังคับแสดง account chooser ทุกครั้ง
+      callback: function(tokenResp){
         _restoreBtn();
-        if(resp && resp.credential){
-          _handleGoogleCredential(resp.credential);
-        } else {
-          showToast('Google Sign-In ถูกยกเลิก','error');
+        if(!tokenResp || tokenResp.error || !tokenResp.access_token){
+          // user กด Cancel หรือเกิด error — ไม่แสดง toast (UX ดีกว่า)
+          return;
         }
+        // ดึง user info จาก Google
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { 'Authorization': 'Bearer ' + tokenResp.access_token }
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(info){
+          var email = (info.email || '').toLowerCase().trim();
+          var name  = info.name || info.given_name || email;
+          if(email){
+            _processGoogleLogin(email, name);
+          } else {
+            showToast('ไม่สามารถดึง email จาก Google ได้','error');
+          }
+        })
+        .catch(function(){
+          showToast('เชื่อมต่อ Google API ไม่ได้','error');
+        });
       },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-      ux_mode: 'popup',
-      context: 'signin'
-    });
-
-    // prompt → เปิด account chooser popup
-    google.accounts.id.prompt(function(notification){
-      if(notification.isNotDisplayed()){
-        // popup ถูก block — ลอง Token Client fallback
-        _restoreBtn();
-        _googleTokenFallback(clientId);
-      } else if(notification.isSkippedMoment() || notification.isDismissedMoment()){
-        // user ปิด popup หรือ skip — restore ปุ่มทันที
+      error_callback: function(err){
+        // popup ถูกปิด หรือ user deny — restore ปุ่มเงียบๆ
         _restoreBtn();
       }
-      // isDisplayed = popup เปิดปกติ — รอ user เลือก
     });
 
-    // Safety timeout: restore ปุ่มหลัง 30 วิ ถ้า callback ไม่ถูกเรียก
-    // (กรณี Google ไม่ส่ง notification กลับมา เช่น user ปิด popup แบบบังคับ)
-    setTimeout(_restoreBtn, 30000);
+    // requestAccessToken() ต้องถูกเรียกจาก user gesture โดยตรง
+    // ฟังก์ชันนี้ถูกเรียกจาก onclick → ถือว่าเป็น user gesture เสมอ
+    _tc.requestAccessToken();
 
   }catch(e){
     _restoreBtn();
-    // ถ้า id.initialize ล้มเหลว ลอง Token Client
-    _googleTokenFallback(clientId);
-  }
-}
-
-// Token Client fallback — สำหรับ browser ที่ block id.prompt()
-function _googleTokenFallback(clientId){
-  if(!window.google || !google.accounts || !google.accounts.oauth2){
-    showToast('ไม่สามารถเปิด Google Sign-In ได้','error'); return;
-  }
-  try{
-    var tc = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'email profile openid',
-      prompt: 'select_account',
-      callback: function(tokenResp){
-        if(!tokenResp || !tokenResp.access_token){
-          showToast('Google Sign-In ถูกยกเลิก','error'); return;
-        }
-        fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
-          headers:{ Authorization:'Bearer '+tokenResp.access_token }
-        }).then(function(r){ return r.json(); })
-          .then(function(info){
-            var email=(info.email||'').toLowerCase().trim();
-            var name=info.name||info.given_name||email;
-            if(email) _processGoogleLogin(email, name);
-            else showToast('ไม่สามารถดึง email จาก Google ได้','error');
-          }).catch(function(){ showToast('Google Sign-In ล้มเหลว','error'); });
-      },
-      error_callback: function(){}
-    });
-    tc.requestAccessToken();
-  }catch(e){
-    showToast('Google Sign-In error: '+e.message,'error');
+    showToast('Google Sign-In error: ' + e.message, 'error');
   }
 }
 
