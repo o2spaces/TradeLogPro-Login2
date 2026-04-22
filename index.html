@@ -2919,6 +2919,8 @@ function _authApply(session){
   try{ _migrateDropKeys(); }catch(e){}
   // reload dropdowns ด้วย user-scoped keys หลัง migration เสร็จ
   if(typeof loadDropOptions === 'function') try{ loadDropOptions(); }catch(e){}
+  // reload strategies ด้วย user-scoped key หลัง login
+  if(typeof initStratRow === 'function') try{ initStratRow(); }catch(e){}
   if(session.role === 'admin'){
     var ab = document.getElementById('adminBtn');
     if(ab) ab.style.display = '';
@@ -2940,8 +2942,8 @@ function _migrateDropKeys(){
   var toMigrate = [];
   for(var i = 0; i < localStorage.length; i++){
     var k = localStorage.key(i); if(!k) continue;
-    // เก็บ global tj_drop_* ที่ยังไม่มี user-scoped version
-    if(k.startsWith('tj_drop_') && !k.startsWith('u_')){
+    // เก็บ global tj_drop_*, tj_strat_list, tj_custom_sess ที่ยังไม่มี user-scoped version
+    if((k.startsWith('tj_drop_') || k==='tj_strat_list' || k==='tj_custom_sess') && !k.startsWith('u_')){
       var userKey = 'u_'+u+'_'+k;
       if(localStorage.getItem(userKey) === null){
         toMigrate.push({from: k, to: userKey});
@@ -7050,9 +7052,15 @@ function loadStratList(){
   try{return JSON.parse(lsGet('tj_strat_list')||'null');}catch(e){return null;}
 }
 function initStratRow(){
-  var saved=loadStratList();
-  if(!saved) return; // use default HTML
   var row=document.getElementById('stratRow');if(!row)return;
+  var saved=loadStratList();
+  if(!saved){
+    // ครั้งแรก — อ่าน HTML default แล้ว save ทันที ผูกกับ user
+    var names=[];
+    row.querySelectorAll('.strat-wrap .tag').forEach(function(el){names.push(el.textContent.trim());});
+    if(names.length) lsSet('tj_strat_list',JSON.stringify(names));
+    return; // ใช้ HTML ที่มีอยู่แล้ว
+  }
   row.innerHTML='';
   saved.forEach(function(name){
     var wrap=document.createElement('span');wrap.className='strat-wrap';
