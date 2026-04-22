@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Auth Diagnostic</title>
+<style>
+body { font-family: monospace; background: #0d0f14; color: #f4f6ff; padding: 24px; max-width: 700px; margin: 0 auto; }
+h2 { color: #4f7aff; margin-bottom: 4px; }
+.sub { color: #7a8299; font-size: 13px; margin-bottom: 24px; }
+.card { background: #1a1e2a; border: 1px solid #2a2f3d; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 12px; font-size: 13px; color: #b0b7cc; text-transform: uppercase; letter-spacing: .6px; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1f2330; font-size: 13px; gap: 12px; }
+.row:last-child { border-bottom: none; }
+.label { color: #7a8299; flex-shrink: 0; }
+.val { font-size: 12px; word-break: break-all; text-align: right; }
+.ok   { color: #2ecc8a; }
+.err  { color: #ff4d6a; }
+.warn { color: #f5a623; }
+.info { color: #4f7aff; }
+button { background: #4f7aff; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-right: 8px; margin-top: 4px; font-family: monospace; }
+button:hover { background: #6b91ff; }
+button.sec { background: #1a1e2a; border: 1px solid #2a2f3d; color: #b0b7cc; }
+button.sec:hover { border-color: #4f7aff; color: #4f7aff; }
+#log { background: #0f1117; border: 1px solid #2a2f3d; border-radius: 8px; padding: 12px; font-size: 11px; line-height: 1.8; max-height: 320px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.log-ok   { color: #2ecc8a; }
+.log-err  { color: #ff4d6a; }
+.log-warn { color: #f5a623; }
+.log-info { color: #4f7aff; }
+.log-dim  { color: #7a8299; }
+input { background: #0f1117; border: 1px solid #2a2f3d; color: #f4f6ff; border-radius: 6px; padding: 7px 11px; font-size: 12px; font-family: monospace; width: 100%; box-sizing: border-box; margin-top: 6px; outline: none; }
+input:focus { border-color: #4f7aff; }
+</style>
+</head>
+<body>
+<h2>🔍 Google Auth Diagnostic</h2>
+<p class="sub">วาง URL นี้เปิดบน <strong>trade-log-pro-login2.vercel.app</strong> เพื่อทดสอบ</p>
+
+<div class="card">
+  <h3>1 · Environment</h3>
+  <div id="envInfo"></div>
+</div>
+
+<div class="card">
+  <h3>2 · Client ID</h3>
+  <input id="clientIdInput" placeholder="วาง Client ID ของคุณที่นี่ แล้วกด Test" value="1008136012501-2a6m6ulfb99f5h8jrvc8arpak85t9ckk.apps.googleusercontent.com">
+</div>
+
+<div class="card">
+  <h3>3 · Google GSI Library</h3>
+  <div id="gsiInfo"><span class="warn">⏳ กำลังโหลด...</span></div>
+  <button onclick="checkGSI()" class="sec" style="margin-top:10px;">🔄 Check GSI</button>
+</div>
+
+<div class="card">
+  <h3>4 · ทดสอบ Sign-In</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+    <button onclick="testOAuth2Popup()">▶ Token Client (Popup)</button>
+    <button onclick="testIdPopup()" class="sec">▶ ID Token (Popup)</button>
+    <button onclick="testDirectRedirect()" class="sec">▶ Direct OAuth Redirect</button>
+  </div>
+  <div class="row">
+    <span class="label">redirect_uri ที่จะใช้:</span>
+    <span class="val info" id="showRedirect">—</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>5 · Log</h3>
+  <div id="log">พร้อมทดสอบ...\n</div>
+  <button onclick="document.getElementById('log').textContent=''" class="sec" style="margin-top:10px;">🗑 Clear</button>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+var _log = document.getElementById('log');
+
+function log(msg, cls){
+  var line = document.createElement('span');
+  line.className = 'log-' + (cls||'info');
+  line.textContent = new Date().toLocaleTimeString('th') + ' ' + msg + '\n';
+  _log.appendChild(line);
+  _log.scrollTop = _log.scrollHeight;
+}
+
+// ── 1. Environment ──
+(function(){
+  var d = document.getElementById('envInfo');
+  var rows = [
+    ['Protocol',  location.protocol, location.protocol==='https:' ? 'ok' : 'err'],
+    ['Origin',    location.origin,   'info'],
+    ['Full URL',  location.href,     'info'],
+    ['User Agent', navigator.userAgent.substring(0,60)+'…', 'dim'],
+  ];
+  d.innerHTML = rows.map(function(r){
+    return '<div class="row"><span class="label">'+r[0]+'</span><span class="val '+r[2]+'">'+r[1]+'</span></div>';
+  }).join('');
+
+  // Show redirect uri
+  var uri = location.href.split('?')[0].split('#')[0];
+  document.getElementById('showRedirect').textContent = uri;
+})();
+
+// ── 2. Check GSI ──
+function checkGSI(){
+  var d = document.getElementById('gsiInfo');
+  var items = [];
+  items.push(['window.google', typeof window.google !== 'undefined', typeof window.google]);
+  items.push(['google.accounts', !!(window.google&&window.google.accounts), window.google&&typeof window.google.accounts]);
+  items.push(['google.accounts.oauth2', !!(window.google&&window.google.accounts&&window.google.accounts.oauth2), window.google&&window.google.accounts&&typeof window.google.accounts.oauth2]);
+  items.push(['google.accounts.id', !!(window.google&&window.google.accounts&&window.google.accounts.id), window.google&&window.google.accounts&&typeof window.google.accounts.id]);
+
+  d.innerHTML = items.map(function(i){
+    var ok = i[1];
+    return '<div class="row"><span class="label">'+i[0]+'</span><span class="val '+(ok?'ok':'err')+'">'+(ok?'✅ ':'❌ ')+i[2]+'</span></div>';
+  }).join('');
+
+  items.forEach(function(i){ log((i[1]?'✅':'❌') + ' ' + i[0] + ' = ' + i[2], i[1]?'ok':'err'); });
+}
+setTimeout(checkGSI, 1500);
+
+function getClientId(){
+  return document.getElementById('clientIdInput').value.trim();
+}
+
+// ── 3. Token Client popup ──
+function testOAuth2Popup(){
+  var cid = getClientId();
+  if(!cid){ log('❌ ไม่มี Client ID', 'err'); return; }
+  log('▶ testOAuth2Popup — clientId: '+cid.substring(0,30)+'…', 'info');
+
+  if(!window.google||!window.google.accounts||!window.google.accounts.oauth2){
+    log('❌ google.accounts.oauth2 ไม่พร้อม — GSI ยังโหลดไม่เสร็จ?', 'err');
+    return;
+  }
+  log('✅ google.accounts.oauth2 พร้อม', 'ok');
+
+  try{
+    var tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: 'openid email profile',
+      prompt: 'select_account',
+      callback: function(resp){
+        if(!resp||resp.error){
+          log('⚠️ callback error: '+(resp&&resp.error||'no response'), 'warn');
+          return;
+        }
+        log('✅ ได้ access_token! token[:20]='+resp.access_token.substring(0,20)+'…', 'ok');
+        fetchUserInfo(resp.access_token);
+      },
+      error_callback: function(err){
+        log('❌ error_callback: type='+( err&&err.type||JSON.stringify(err)), 'err');
+      }
+    });
+    log('✅ initTokenClient สำเร็จ — กำลังเปิด popup…', 'ok');
+    tc.requestAccessToken();
+  }catch(e){
+    log('❌ initTokenClient throw: '+e.message, 'err');
+  }
+}
+
+// ── 4. id.initialize popup ──
+function testIdPopup(){
+  var cid = getClientId();
+  if(!cid){ log('❌ ไม่มี Client ID', 'err'); return; }
+  log('▶ testIdPopup — id.initialize + prompt()', 'info');
+
+  if(!window.google||!window.google.accounts||!window.google.accounts.id){
+    log('❌ google.accounts.id ไม่พร้อม', 'err');
+    return;
+  }
+
+  try{
+    window.google.accounts.id.initialize({
+      client_id: cid,
+      callback: function(resp){
+        log('✅ id callback — credential[:20]='+resp.credential.substring(0,20)+'…', 'ok');
+        // decode JWT
+        try{
+          var parts = resp.credential.split('.');
+          var payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+          log('   email: '+payload.email, 'ok');
+          log('   name:  '+payload.name, 'ok');
+        }catch(e){ log('   decode error: '+e.message,'warn'); }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+    log('✅ id.initialize สำเร็จ — กำลัง prompt…', 'ok');
+    window.google.accounts.id.prompt(function(n){
+      log('prompt notification: displayed='+n.isDisplayed()+' skipped='+n.isSkippedMoment()+' dismissed='+n.isDismissedMoment(), 'warn');
+      if(n.getSkippedReason) log('  skippedReason: '+n.getSkippedReason(), 'warn');
+      if(n.getDismissedReason) log('  dismissedReason: '+n.getDismissedReason(), 'warn');
+    });
+  }catch(e){
+    log('❌ id.initialize throw: '+e.message, 'err');
+  }
+}
+
+// ── 5. Direct OAuth redirect ──
+function testDirectRedirect(){
+  var cid = getClientId();
+  if(!cid){ log('❌ ไม่มี Client ID', 'err'); return; }
+  var redirectUri = location.href.split('?')[0].split('#')[0];
+  log('▶ Direct OAuth URL redirect_uri='+redirectUri, 'info');
+
+  var params = [
+    'client_id='+encodeURIComponent(cid),
+    'redirect_uri='+encodeURIComponent(redirectUri),
+    'response_type=token',
+    'scope='+encodeURIComponent('openid email profile'),
+    'prompt=select_account'
+  ].join('&');
+  var url = 'https://accounts.google.com/o/oauth2/v2/auth?'+params;
+  log('Opening: '+url.substring(0,80)+'…', 'dim');
+
+  var w=500,h=600;
+  var left=Math.round(screen.width/2-w/2);
+  var top=Math.round(screen.height/2-h/2);
+  var pop = window.open(url,'_gtest','width='+w+',height='+h+',left='+left+',top='+top);
+  if(!pop||pop.closed){
+    log('❌ Popup ถูก block! ให้คลิก Allow Popups ใน browser แล้วลองใหม่', 'err');
+    return;
+  }
+  log('✅ Popup เปิดแล้ว — รอ redirect…', 'ok');
+
+  var poll = setInterval(function(){
+    try{
+      if(pop.closed){ clearInterval(poll); log('⚠️ Popup ถูกปิด', 'warn'); return; }
+      var u = pop.location.href;
+      if(u && u.indexOf(location.origin)===0){
+        clearInterval(poll);
+        pop.close();
+        var hash = u.split('#')[1]||'';
+        var fp = {};
+        hash.split('&').forEach(function(p){ var kv=p.split('='); fp[kv[0]]=decodeURIComponent(kv[1]||''); });
+        if(fp.error){ log('❌ Google error: '+fp.error, 'err'); return; }
+        if(fp.access_token){
+          log('✅ ได้ access_token! '+fp.access_token.substring(0,20)+'…', 'ok');
+          fetchUserInfo(fp.access_token);
+        } else {
+          log('⚠️ redirect กลับมาแล้วแต่ไม่มี token: '+u.substring(0,80), 'warn');
+        }
+      }
+    }catch(e){ /* cross-origin — ยังรอ */ }
+  }, 300);
+  setTimeout(function(){ clearInterval(poll); if(!pop.closed)pop.close(); }, 120000);
+}
+
+function fetchUserInfo(token){
+  log('🔄 Fetching userinfo…', 'dim');
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+    headers:{'Authorization':'Bearer '+token}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    log('✅ userinfo OK', 'ok');
+    log('   email: '+d.email, 'ok');
+    log('   name:  '+d.name, 'ok');
+  })
+  .catch(function(e){ log('❌ userinfo error: '+e.message,'err'); });
+}
+
+// Check for OAuth redirect on load
+(function(){
+  var hash = location.hash.substring(1);
+  if(hash && hash.indexOf('access_token')>=0){
+    var fp={};
+    hash.split('&').forEach(function(p){ var kv=p.split('='); fp[kv[0]]=decodeURIComponent(kv[1]||''); });
+    if(fp.access_token){
+      log('✅ Detected redirect token on load!', 'ok');
+      fetchUserInfo(fp.access_token);
+    }
+  }
+})();
+</script>
+</body>
+</html>
