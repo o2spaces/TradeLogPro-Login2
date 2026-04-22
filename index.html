@@ -396,13 +396,14 @@ body.data-mode-open #dataView{top:50px;}
 .btn-save{width:100%;background:var(--accent);color:#fff;border:none;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font-main);margin-top:9px;}
 .btn-save:hover{background:var(--accent-hover);}
 /* MODALS */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
-.modal-backdrop.open{opacity:1;pointer-events:all;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-backdrop.open{display:flex;opacity:1;pointer-events:all;}
 /* ── Data Mode: ยก modal ให้อยู่เหนือ dataView stacking context ── */
 body.data-mode-open .modal-backdrop{z-index:9000;}
 body.data-mode-open .modal-backdrop.open{z-index:9000;}
-/* mDataTrade ต้องอยู่เหนือ #dataView (z-index:10) เสมอ */
+/* mDataTrade — force highest z-index, always above everything */
 #mDataTrade{z-index:99999 !important;}
+#mDataTrade.open{display:flex !important;opacity:1 !important;pointer-events:all !important;}
 .modal{background:var(--bg-card);border:1px solid var(--border);border-radius:13px;width:min(600px,94vw);max-width:96vw;max-height:91vh;overflow-y:auto;transform:translateY(14px);transition:transform .2s,width .2s,height .2s,max-width .2s,max-height .2s,border-radius .2s;}
 /* When sidebars collapse, allow modal to breathe wider */
 .layout.left-collapsed ~ .modal-backdrop .modal,
@@ -4990,7 +4991,13 @@ function openDay(dt){
 }
 function openDayByKey(k){var p=k.split('-');openDay(new Date(p[0],p[1]-1,p[2]));}
 function closeM(id){
-  document.getElementById(id).classList.remove('open');
+  var el=document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('open');
+  // Clear any inline styles forced by dtOpenAdd
+  el.style.display='';
+  el.style.opacity='';
+  el.style.pointerEvents='';
   // Remove modal-open from body only if no other modals open
   var anyOpen=document.querySelectorAll('.modal-backdrop.open').length>0;
   if(!anyOpen) document.body.classList.remove('modal-open');
@@ -8514,6 +8521,7 @@ async function dtDoScan(){
 
 // ── Open Add/Edit ──
 function dtOpenAdd(){
+  try{
   DT.editIdx=-1;DT.side='Long';DT.emo=5;DT.disc=5;DT.sessions=[];DT._upB64=null;
   window._dtSLIgnored=false;
   var dtSessEl=document.getElementById('dtSession');if(dtSessEl)dtSessEl.value='';
@@ -8549,7 +8557,20 @@ function dtOpenAdd(){
   var prev=document.getElementById('dtUpPreview');if(prev){prev.src='';prev.style.display='none';}
   var pr=document.getElementById('dtUpPrompt');if(pr)pr.style.display='';
   var sc=document.getElementById('dtScanResult');if(sc)sc.style.display='none';
-  openM('mDataTrade');
+  // Force modal to body top, then open
+  var modal=document.getElementById('mDataTrade');
+  if(modal){
+    document.body.appendChild(modal);
+    modal.style.display='flex';
+    modal.style.opacity='1';
+    modal.style.pointerEvents='all';
+    modal.classList.add('open');
+    document.body.classList.add('modal-open');
+  }
+  }catch(err){
+    showToast('❌ Error: '+err.message,'error');
+    console.error('dtOpenAdd error:',err);
+  }
 }
 function dtOpenEdit(visIdx){
   // ── FIX: ใช้ _dtCurrentRows (rows ที่ render อยู่) แทน dtFiltered() ใหม่
