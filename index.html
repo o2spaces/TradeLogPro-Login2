@@ -556,6 +556,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(0.
 
 <!-- config.js โหลดก่อนทุกอย่าง — admin แก้ไขที่ไฟล์นั้น -->
 <script src="config.js"></script>
+<script>
+// Fallback — ถ้า config.js ไม่มี GOOGLE_CLIENT_ID
+if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
+  window.GOOGLE_CLIENT_ID = '1008136012501-2a6m6ulfb99f5h8jrvc8arpak85t9ckk.apps.googleusercontent.com';
+}
+</script>
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2652,11 +2658,10 @@ function _initGoogleOneTap(authUrl){
 // เรียกจากปุ่มโดยตรง → popup เปิดทันที ไม่ถูก browser block
 function authGoogleSignIn(){
   var clientId = (typeof window.GOOGLE_CLIENT_ID !== 'undefined') ? window.GOOGLE_CLIENT_ID : '';
+  console.log('[TradeLog] authGoogleSignIn called, clientId:', clientId ? clientId.substring(0,20)+'...' : 'MISSING');
   if(!clientId){
     showToast('⚠️ ไม่พบ GOOGLE_CLIENT_ID ใน config.js','error'); return;
   }
-  // เรียก _doGooglePopup โดยตรงจาก user click — ห้ามใช้ setTimeout/setInterval
-  // เพราะ requestAccessToken() ต้องอยู่ใน call stack ของ user gesture
   _doGooglePopup(clientId);
 }
 
@@ -2665,6 +2670,10 @@ function authGoogleSignIn(){
 // ไม่มีปัญหา "prompt blocked after dismiss" แบบ id.prompt()
 function _doGooglePopup(clientId){
   var btn = document.querySelector('.auth-google-btn');
+  console.log('[TradeLog] _doGooglePopup called');
+  console.log('[TradeLog] window.google:', typeof window.google);
+  console.log('[TradeLog] google.accounts:', window.google && typeof window.google.accounts);
+  console.log('[TradeLog] google.accounts.oauth2:', window.google && window.google.accounts && typeof window.google.accounts.oauth2);
 
   // restore ปุ่มเสมอ — ไม่ว่า popup จะปิดแบบไหน
   function _restoreBtn(){
@@ -2675,6 +2684,7 @@ function _doGooglePopup(clientId){
   // ต้องมี google.accounts.oauth2
   if(!window.google || !window.google.accounts || !window.google.accounts.oauth2){
     _restoreBtn();
+    console.warn('[TradeLog] google.accounts.oauth2 not available!');
     showToast('Google library ยังโหลดไม่เสร็จ กรุณารอสักครู่','error');
     return;
   }
