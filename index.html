@@ -4371,6 +4371,7 @@ function loadDropOptions(){
     var opts;
     try{ opts = stored ? JSON.parse(stored) : DROP_DEFAULTS[id]; }
     catch(e){ opts = DROP_DEFAULTS[id]; lsRem('tj_drop_'+id); }
+    if(!Array.isArray(opts)) opts = DROP_DEFAULTS[id] || [];
     var sel = document.getElementById(id);
     if(!sel) return;
     // Filter dropdowns need "All" as first option
@@ -4386,7 +4387,7 @@ function loadDropOptions(){
       });
       return;
     }
-    Array.from(sel.options).forEach(function(o){ if(o.value!=='') o.remove(); });
+    if(sel.options) Array.from(sel.options).forEach(function(o){ if(o.value!=='') o.remove(); });
     if(isFilter && sel.options.length===0){
       var allOpt=document.createElement('option'); allOpt.value=''; allOpt.textContent='All'; sel.appendChild(allOpt);
     }
@@ -8326,11 +8327,11 @@ function dtIgnoreSLWarn(){
 }
 
 function dtCalcAll(){
-  var entry=parseFloat(document.getElementById('dtEntry').value)||0;
-  var tp=parseFloat(document.getElementById('dtTP').value)||0;
-  var sl=parseFloat(document.getElementById('dtSL2').value)||0;
-  var risk=parseFloat(document.getElementById('dtRisk').value)||0;
-  var result=document.getElementById('dtResult').value;
+  var entry=parseFloat((document.getElementById('dtEntry')||{}).value)||0;
+  var tp=parseFloat((document.getElementById('dtTP')||{}).value)||0;
+  var sl=parseFloat((document.getElementById('dtSL2')||{}).value)||0;
+  var risk=parseFloat((document.getElementById('dtRisk')||{}).value)||0;
+  var result=(document.getElementById('dtResult')||{}).value||'';
   var asset=(document.getElementById('dtAsset')||{}).value||'MNQ1';
   var pv=(DT_CONTRACT[asset]||{pts:2}).pts;
 
