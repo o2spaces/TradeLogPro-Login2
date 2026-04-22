@@ -3298,8 +3298,8 @@ function _lsKey(k){
   if(_LS_GLOBAL.indexOf(k)>=0) return k;
   var u=_lsUser(); return u?'u_'+u+'_'+k:k;
 }
-function lsGet(k){ return lsGet(_lsKey(k)); }
-function lsSet(k,v){ return lsSet(_lsKey(k),v); }
+function lsGet(k){ return localStorage.getItem(_lsKey(k)); }
+function lsSet(k,v){ return localStorage.setItem(_lsKey(k),v); }
 function lsRem(k){ return localStorage.removeItem(_lsKey(k)); }
 
 function _migrateUserStorage(){
