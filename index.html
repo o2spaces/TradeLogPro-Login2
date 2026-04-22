@@ -2702,11 +2702,17 @@ function _doGooglePopup(clientId){
         // popup ถูก block — ลอง Token Client fallback
         _restoreBtn();
         _googleTokenFallback(clientId);
-      } else if(notification.isSkippedMoment()){
+      } else if(notification.isSkippedMoment() || notification.isDismissedMoment()){
+        // user ปิด popup หรือ skip — restore ปุ่มทันที
         _restoreBtn();
       }
       // isDisplayed = popup เปิดปกติ — รอ user เลือก
     });
+
+    // Safety timeout: restore ปุ่มหลัง 30 วิ ถ้า callback ไม่ถูกเรียก
+    // (กรณี Google ไม่ส่ง notification กลับมา เช่น user ปิด popup แบบบังคับ)
+    setTimeout(_restoreBtn, 30000);
+
   }catch(e){
     _restoreBtn();
     // ถ้า id.initialize ล้มเหลว ลอง Token Client
