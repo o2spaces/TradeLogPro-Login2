@@ -3755,10 +3755,13 @@ if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0 && _existingPor
     var hasAuth = (typeof window.AUTH_GAS_URL !== 'undefined') && window.AUTH_GAS_URL;
     if(S.scriptUrl && (_authSession || !hasAuth)){
       setConn(true);
-      // แสดง loading skeleton บน calendar ระหว่างรอ sync
-      // เพื่อป้องกัน local cache เก่าโผล่ก่อน sheet ตอบกลับ
       _setCalLoadingState(true);
-      syncFromSheet(function(){ _setCalLoadingState(false); });
+      // Safety: ถ้า sync ไม่ตอบใน 5 วิ → ปลด overlay แน่ๆ
+      var _calOverlayTimeout = setTimeout(function(){ _setCalLoadingState(false); renderCal(); }, 5000);
+      syncFromSheet(function(){
+        clearTimeout(_calOverlayTimeout);
+        _setCalLoadingState(false);
+      });
     }
     window._initSyncDone = !!(S.scriptUrl && (_authSession || !hasAuth));
     updateBadge();
@@ -10796,7 +10799,7 @@ if(document.readyState==='loading'){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start;">
         <div>
           <div class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Session <span style="font-size:9px;color:var(--accent);cursor:pointer;" onclick="addDtSessionTag()">+ Add</span></div>
-          <div id="dtSessionTagRow" style="display:flex;flex-wrap:wrap;gap:3px;min-height:28px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 6px;"></div>
+          <div id="dtSessionTagRow" style="display:flex;flex-wrap:nowrap;gap:3px;min-height:28px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 6px;overflow-x:auto;"></div>
         </div>
         <div class="form-field">
           <label>Time in Position <span style="font-size:9px;color:var(--amber)">(auto)</span></label>
