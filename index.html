@@ -2916,6 +2916,9 @@ function _authApply(session){
   if(uname)  uname.textContent    = session.displayName || session.username;
   if(avatar) avatar.textContent   = (session.displayName || session.username).charAt(0).toUpperCase();
   try{ _migrateUserStorage(); }catch(e){}
+  try{ _migrateDropKeys(); }catch(e){}
+  // reload dropdowns ด้วย user-scoped keys หลัง migration เสร็จ
+  if(typeof loadDropOptions === 'function') try{ loadDropOptions(); }catch(e){}
   if(session.role === 'admin'){
     var ab = document.getElementById('adminBtn');
     if(ab) ab.style.display = '';
@@ -2928,6 +2931,27 @@ function _authApply(session){
   // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
   var urlToUse = session.scriptUrl || lsGet('tj_url') || '';
   if(urlToUse) S.scriptUrl = urlToUse;
+}
+
+// ── Migrate tj_drop_* global keys → user-scoped ทุกครั้ง login ──
+// ทำงาน idempotent: ถ้า user-key มีอยู่แล้วไม่ overwrite
+function _migrateDropKeys(){
+  var u = _lsUser(); if(!u) return;
+  var toMigrate = [];
+  for(var i = 0; i < localStorage.length; i++){
+    var k = localStorage.key(i); if(!k) continue;
+    // เก็บ global tj_drop_* ที่ยังไม่มี user-scoped version
+    if(k.startsWith('tj_drop_') && !k.startsWith('u_')){
+      var userKey = 'u_'+u+'_'+k;
+      if(localStorage.getItem(userKey) === null){
+        toMigrate.push({from: k, to: userKey});
+      }
+    }
+  }
+  toMigrate.forEach(function(m){
+    var v = localStorage.getItem(m.from);
+    if(v !== null) localStorage.setItem(m.to, v);
+  });
 }
 
 function authLogout(){
@@ -4373,7 +4397,8 @@ function loadDropOptions(){
     }catch(e){}
   }
   Object.keys(DROP_DEFAULTS).forEach(function(id){
-    var stored = lsGet('tj_drop_'+id);
+    var stored = lsGet('tj_drop_'+id); // lsGet ใช้ _lsKey() → prefix u_{user}_ อัตโนมัติ
+    // ถ้า user login แล้วแต่ไม่มี user-scoped key → ใช้ DROP_DEFAULTS (ไม่ fallback global)
     var opts;
     try{ opts = stored ? JSON.parse(stored) : DROP_DEFAULTS[id]; }
     catch(e){ opts = DROP_DEFAULTS[id]; lsRem('tj_drop_'+id); }
