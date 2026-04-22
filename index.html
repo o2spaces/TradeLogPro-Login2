@@ -3750,7 +3750,7 @@ if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0 && _existingPor
     // Load current portfolio data
     S.sessions=getPortSessions();
     S.trades=getPortTrades();
-    renderPortfolioBar(); // แสดง local ports ก่อน
+    try{renderPortfolioBar();}catch(e){console.error('renderPortfolioBar init:',e);}
     // Sync เมื่อมี scriptUrl และมี session (login แล้ว) หรือไม่ได้ใช้ auth system
     var hasAuth = (typeof window.AUTH_GAS_URL !== 'undefined') && window.AUTH_GAS_URL;
     if(S.scriptUrl && (_authSession || !hasAuth)){
@@ -3776,7 +3776,7 @@ if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0 && _existingPor
   initSessionTagColors();
   initStratRow(); // โหลด strategy list จาก localStorage
   loadDropOptions();
-  renderPortfolioBar();
+  try{renderPortfolioBar();}catch(e){console.error('renderPortfolioBar:',e);}
   renderCal();
   setTimeout(function(){ _sidebarRefresh(); },50);
   setTimeout(function(){setEmoByIdx(0);},0);
@@ -3849,8 +3849,11 @@ function renderPortfolioBar(){
     var p=ports[id];
     var isActive=id===S.currentPortfolio;
     var portTrades={};
-    try{portTrades=JSON.parse(lsGet('port_'+id+'_t')||'{}');}catch(e){}
-    var bal=Object.values(portTrades).reduce(function(sum,arr){return sum+arr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);},0);
+    try{
+      var _pt=JSON.parse(lsGet('port_'+id+'_t')||'{}');
+      portTrades=(_pt&&typeof _pt==='object'&&!Array.isArray(_pt))?_pt:{};
+    }catch(e){}
+    var bal=Object.values(portTrades).reduce(function(sum,arr){return sum+(Array.isArray(arr)?arr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0):0);},0);
     var balStr=(bal>=0?'+':'')+'$'+Math.abs(bal).toFixed(2);
     html+='<div class="port-tab'+(isActive?' active':'')+'" data-port-id="'+id+'" onclick="switchPortfolio(\''+id+'\')" ondblclick="event.stopPropagation();inlineRenamePort(\''+id+'\')" title="คลิก=เปลี่ยนพอร์ต | ดับเบิลคลิก=เปลี่ยนชื่อ" style="position:relative;padding-right:22px;">'
       +'<span id="port-name-span-'+id+'">📁 '+escHtml(p.name)+(p.fund?' <span style="font-size:9px;color:var(--text-muted);">['+escHtml(p.fund)+']</span>':'')+'</span>'
