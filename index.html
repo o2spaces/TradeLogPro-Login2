@@ -682,6 +682,7 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
           <div class="drop-item" onclick="closeMenu();setTimeout(openFeesConfig,80)">💰 Fees &amp; Commission</div>
           <div class="drop-item" onclick="openSheet();closeMenu()">🔗 Google Sheet URL</div>
           <div class="drop-item" id="menuSetupSheet" onclick="openSetupSheetFromMenu();closeMenu()" style="display:none;">🔗 ตั้งค่า Sheet URL ของฉัน</div>
+          <div class="drop-item" id="menuChangePass" onclick="openChangePassword();closeMenu()" style="display:none;">🔑 เปลี่ยนรหัสผ่าน</div>
           <div class="drop-item" onclick="openM('mHelp');closeMenu()">❓ Help & Tutorials</div>
         </div>
       </div>
@@ -2929,6 +2930,9 @@ function _authApply(session){
   // แสดงเมนู "ตั้งค่า Sheet URL ของฉัน" เมื่อ login ด้วย auth system
   var menuSetup = document.getElementById('menuSetupSheet');
   if(menuSetup) menuSetup.style.display = '';
+  // แสดงเมนู "เปลี่ยนรหัสผ่าน" เมื่อ login ด้วย password (ไม่ใช่ Google)
+  var menuChPass = document.getElementById('menuChangePass');
+  if(menuChPass) menuChPass.style.display = (session.loginType === 'password') ? '' : 'none';
   // ใช้ scriptUrl จาก session ก่อน ถ้าว่างใช้จาก localStorage
   var urlToUse = session.scriptUrl || lsGet('tj_url') || '';
   if(urlToUse) S.scriptUrl = urlToUse;
@@ -11726,6 +11730,42 @@ document.addEventListener('mouseup', function(){
   </div>
 </div>
 
+<!-- ─── CHANGE PASSWORD MODAL ──────────────────────────────── -->
+<div class="modal-backdrop" id="mChangePass">
+  <div class="modal" style="max-width:380px;width:94vw;">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span>🔑</span>
+        <span style="font-size:14px;font-weight:600;">เปลี่ยนรหัสผ่าน</span>
+      </div>
+      <button class="modal-close" onclick="closeM('mChangePass')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:18px;">
+      <div id="chPassErr" style="background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.3);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--red);margin-bottom:12px;display:none;"></div>
+      <div id="chPassOk"  style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.3);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--green);margin-bottom:12px;display:none;"></div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <div>
+          <div class="auth-label" style="margin-bottom:5px;">รหัสผ่านเดิม</div>
+          <input id="chPassOld" class="settings-input" type="password" placeholder="ใส่รหัสผ่านเดิม" style="width:100%;">
+        </div>
+        <div>
+          <div class="auth-label" style="margin-bottom:5px;">รหัสผ่านใหม่</div>
+          <input id="chPassNew" class="settings-input" type="password" placeholder="ใส่รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" style="width:100%;">
+        </div>
+        <div>
+          <div class="auth-label" style="margin-bottom:5px;">ยืนยันรหัสผ่านใหม่</div>
+          <input id="chPassConfirm" class="settings-input" type="password" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง" style="width:100%;"
+            onkeydown="if(event.key==='Enter') doChangePassword()">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn-sm" onclick="closeM('mChangePass')">ยกเลิก</button>
+        <button id="chPassBtn" class="btn-primary" onclick="doChangePassword()" style="font-size:12px;">🔑 เปลี่ยนรหัสผ่าน</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── AUTH + ADMIN JAVASCRIPT ──────────────────────────────── -->
 <script>
 function helpTab(el, id){
@@ -11757,6 +11797,92 @@ function helpToggle(header){
   } else {
     content.style.display='none';
     if(arrow) arrow.textContent='▼';
+  }
+}
+
+// ── Change Password ────────────────────────────────────────────
+function openChangePassword(){
+  if(!_authSession){ showToast('❌ กรุณา Login ก่อน','error'); return; }
+  if(_authSession.loginType === 'google'){
+    showToast('⚠️ บัญชี Google ไม่สามารถเปลี่ยนรหัสผ่านได้','error'); return;
+  }
+  ['chPassOld','chPassNew','chPassConfirm'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  var errEl = document.getElementById('chPassErr');
+  var okEl  = document.getElementById('chPassOk');
+  if(errEl) errEl.style.display = 'none';
+  if(okEl)  okEl.style.display  = 'none';
+  var btn = document.getElementById('chPassBtn');
+  if(btn){ btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน'; }
+  openM('mChangePass');
+  setTimeout(function(){ var el=document.getElementById('chPassOld'); if(el) el.focus(); }, 80);
+}
+
+async function doChangePassword(){
+  var oldEl  = document.getElementById('chPassOld');
+  var newEl  = document.getElementById('chPassNew');
+  var confEl = document.getElementById('chPassConfirm');
+  var errEl  = document.getElementById('chPassErr');
+  var okEl   = document.getElementById('chPassOk');
+  var btn    = document.getElementById('chPassBtn');
+
+  var oldPass  = (oldEl  ? oldEl.value  : '');
+  var newPass  = (newEl  ? newEl.value  : '');
+  var confPass = (confEl ? confEl.value : '');
+
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  if(!oldPass)              { errEl.textContent='❌ กรุณาใส่รหัสผ่านเดิม';          errEl.style.display='block'; return; }
+  if(!newPass)              { errEl.textContent='❌ กรุณาใส่รหัสผ่านใหม่';          errEl.style.display='block'; return; }
+  if(newPass.length < 6)   { errEl.textContent='❌ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัว'; errEl.style.display='block'; return; }
+  if(newPass !== confPass)  { errEl.textContent='❌ รหัสผ่านใหม่ไม่ตรงกัน';         errEl.style.display='block'; return; }
+  if(oldPass === newPass)   { errEl.textContent='❌ รหัสผ่านใหม่ต้องไม่ซ้ำกับเดิม'; errEl.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = '⏳ กำลังเปลี่ยน...';
+
+  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(!authUrl){
+    errEl.textContent = '❌ ไม่พบ Auth Server URL';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน';
+    return;
+  }
+
+  try{
+    var oldHash = await _sha256(oldPass);
+    var newHash = await _sha256(newPass);
+    var res  = await fetch(authUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action:   'changePassword',
+        username: _authSession.username,
+        oldHash:  oldHash,
+        newHash:  newHash
+      })
+    });
+    var data = await res.json();
+    if(data.status === 'ok'){
+      // อัปเดต hash ใน session
+      _authSession._hash = newHash;
+      try{
+        var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+        if(saved){ saved._hash = newHash; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+      }catch(e){}
+      btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน';
+      okEl.textContent = '✅ เปลี่ยนรหัสผ่านสำเร็จ!';
+      okEl.style.display = 'block';
+      setTimeout(function(){ closeM('mChangePass'); }, 1400);
+    } else {
+      errEl.textContent = '❌ ' + (data.msg || 'เกิดข้อผิดพลาด');
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน';
+    }
+  }catch(e){
+    errEl.textContent = '❌ เชื่อมต่อ Auth Server ไม่ได้: ' + (e.message || 'network error');
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน';
   }
 }
 
