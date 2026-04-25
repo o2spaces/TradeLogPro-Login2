@@ -1174,11 +1174,19 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
         <!-- Color pickers -->
         <label title="สีตัวอักษร" style="display:flex;align-items:center;gap:3px;cursor:pointer;height:26px;padding:0 5px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;transition:border-color .12s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
           <span style="font-size:11px;font-weight:700;color:var(--text-secondary);">A</span>
-          <input type="color" id="ndTextColor" value="#e8eaf0" onchange="ndExec('foreColor',this.value)" style="width:16px;height:16px;padding:0;border:none;background:none;cursor:pointer;border-radius:2px;">
+          <input type="color" id="ndTextColor" value="#e8eaf0"
+            onmousedown="ndSaveRange()"
+            oninput="ndApplyTextColor(this.value)"
+            onchange="ndApplyTextColor(this.value)"
+            style="width:16px;height:16px;padding:0;border:none;background:none;cursor:pointer;border-radius:2px;">
         </label>
         <label title="ไฮไลท์พื้นหลัง" style="display:flex;align-items:center;gap:3px;cursor:pointer;height:26px;padding:0 5px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;transition:border-color .12s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
           <span style="font-size:11px;color:var(--text-secondary);">bg</span>
-          <input type="color" id="ndBgColor" value="#f5a623" onchange="ndExec('hiliteColor',this.value)" style="width:16px;height:16px;padding:0;border:none;background:none;cursor:pointer;border-radius:2px;">
+          <input type="color" id="ndBgColor" value="#f5a623"
+            onmousedown="ndSaveRange()"
+            oninput="ndApplyBgColor(this.value)"
+            onchange="ndApplyBgColor(this.value)"
+            style="width:16px;height:16px;padding:0;border:none;background:none;cursor:pointer;border-radius:2px;">
         </label>
         <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
         <!-- Emoji picker button -->
@@ -2630,7 +2638,11 @@ function _authInit(){
   try{
     var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
     if(saved && saved.username && saved.expiry > Date.now()){
-      _authSession = saved;
+      // BUG3 FIX: ไม่ restore _hash จาก localStorage — hash อยู่ใน RAM เท่านั้น
+      // ถ้า session หมดอายุ หรือ refresh → ต้อง login ใหม่เพื่อรับ hash ใหม่
+      _authSession = { username: saved.username, displayName: saved.displayName, role: saved.role,
+                       scriptUrl: saved.scriptUrl||'', loginType: saved.loginType||'password',
+                       expiry: saved.expiry, _hash: null };
       _authApply(saved);
       document.getElementById('authOverlay').style.display = 'none';
       // ตรวจว่า scriptUrl ว่างหรือไม่ — ถ้าว่างให้แสดง setup overlay
@@ -2862,7 +2874,11 @@ async function authDoLogin(){
 
   try{
     var hash = await _sha256(pass);
-    var res  = await fetch(url + '?action=login&username=' + encodeURIComponent(user) + '&passwordHash=' + encodeURIComponent(hash));
+    // BUG1 FIX: ใช้ POST แทน GET — passwordHash ไม่ติด URL / browser history
+    var res  = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', username: user, passwordHash: hash })
+    });
     var data = await res.json();
 
     if(data.status === 'ok'){
@@ -2871,12 +2887,12 @@ async function authDoLogin(){
         displayName: data.displayName || data.username,
         role:        data.role,
         scriptUrl:   data.scriptUrl || '',
-        _hash:       hash,
         loginType:   'password',
         expiry:      Date.now() + 24 * 60 * 60 * 1000
       };
+      // BUG3 FIX: ไม่เก็บ _hash ใน localStorage — เก็บแค่ใน memory (_authSession)
       localStorage.setItem('tj_session', JSON.stringify(session));
-      _authSession = session;
+      _authSession = Object.assign({}, session, { _hash: hash }); // hash อยู่ใน RAM เท่านั้น
       if(session.scriptUrl){
         S.scriptUrl = session.scriptUrl;
         lsSet('tj_url', session.scriptUrl);
@@ -3231,7 +3247,11 @@ function _migrateUserStorage(){
   localStorage.setItem('_mig_'+u,'1');
 }
 
-var S={sessions:{},trades:{},scriptUrl:'',keys:{mGem:'gemini-2.5-flash-preview-05-20',mGroq:'llama-4-scout-17b-16e-instruct'},prov:'gemini',provBackup:'groq',viewMonth:new Date(),viewYear:new Date().getFullYear(),emo:'😡',side:'Long',mKey:'',mTrades:[],upB64:null,eqChart:null,eqChartW:null,currentPortfolio:'default',portfolios:{}};
+var S={sessions:{},trades:{},scriptUrl:'',
+  // BUG3 FIX: API keys อยู่ใน S._k แทน S.keys — ชื่อไม่ชัด ลดโอกาส typo ดึง key ออก
+  // (ยังไม่ ideal — server-side proxy ดีกว่า แต่ช่วยลด surface area ได้)
+  get keys(){ return this._k; }, set keys(v){ this._k = v; }, _k:{mGem:'gemini-2.5-flash-preview-05-20',mGroq:'llama-4-scout-17b-16e-instruct'},
+  prov:'gemini',provBackup:'groq',viewMonth:new Date(),viewYear:new Date().getFullYear(),emo:'😡',side:'Long',mKey:'',mTrades:[],upB64:null,eqChart:null,eqChartW:null,currentPortfolio:'default',portfolios:{}};
 
 // ── สั่ง GAS ล้าง duplicate rows ใน Sheet ──
 function cleanSheetDuplicates(){
@@ -3495,12 +3515,22 @@ function syncFromSheet(onDone){
           });
         });
         // Sheet = source of truth ทั้งหมด ไม่ merge กับ local (ป้องกัน duplicate)
+        // BUG4 FIX: ถ้ามี _sendQueue (trade ที่ยังส่งไม่ถึง Sheet) → ไม่ overwrite date เหล่านั้น
+        var _pendingDates = {};
+        if(typeof _sendQueue !== 'undefined'){
+          _sendQueue.forEach(function(item){
+            var p = item.payload;
+            if(p && p.date) _pendingDates[(p.portfolio||'default')+'|'+p.date] = true;
+          });
+        }
         var portsFromSheet = Object.keys(byPort);
         portsFromSheet.forEach(function(port){
           var tombstone = {};
           try{ tombstone = JSON.parse(lsGet('tj_deleted_'+port)||'{}'); }catch(e){}
           var filtered = {};
           Object.keys(byPort[port]).forEach(function(date){
+            // BUG4 FIX: ถ้า date นี้มี trade ที่ยังค้างใน queue → ใช้ local version ไปก่อน
+            if(_pendingDates[port+'|'+date]) return;
             if(!tombstone[date]){ filtered[date] = _dedupTrades(byPort[port][date]||[]); }
           });
           lsSet('port_'+port+'_t', JSON.stringify(filtered));
@@ -7468,7 +7498,13 @@ function openShareDashboard(){
     modal._shareUrl=shareUrl;
     var urlSizeKB=Math.round(shareUrl.length/1024*10)/10;
     var sizeLabel=document.getElementById('shareSizeLabel');
-    if(sizeLabel) sizeLabel.textContent='ขนาด: '+urlSizeKB+' KB';
+    // BUG7 FIX: แจ้งเตือนถ้า URL ใหญ่เกิน 100KB (บาง browser / server ตัดที่ 2000-8000 chars)
+    var sizeWarn = urlSizeKB > 100 ? ' ⚠️ ใหญ่เกินไป — ใช้ Short URL แทน' : '';
+    if(sizeLabel) sizeLabel.textContent='ขนาด: '+urlSizeKB+' KB' + sizeWarn;
+    if(urlSizeKB > 100 && modal._mode === 'full'){
+      showToast('⚠️ URL ใหญ่มาก (' + urlSizeKB + ' KB) — แนะนำใช้ Short URL', 'error');
+      modal._mode = 'short'; // สลับไป short mode อัตโนมัติ
+    }
     // Update UI if currently showing full
     if(modal._mode==='full') _renderShareMode('full');
     // 2) Try to shorten — multiple APIs with fallback
@@ -7986,7 +8022,6 @@ function ndLoadContent(){
     editor.contentEditable='false';
     editor.style.cursor='default';
     editor.style.opacity='0.85';
-    // Hide toolbar and action buttons
     var toolbar=document.getElementById('ndToolbar');
     if(toolbar) toolbar.style.display='none';
     var footer=document.getElementById('ndFooter');
@@ -7994,7 +8029,30 @@ function ndLoadContent(){
     ndBindImgZoom(editor);
     return;
   }
-  var saved=lsGet(ndStorageKey());
+
+  var saved = lsGet(ndStorageKey());
+  // BUG FIX: ถ้า localStorage ว่าง ให้ลองดึงจาก Journal Sheet (sync ไว้ใน lsSet แล้ว)
+  // กรณีนี้เกิดเมื่อ user เปิด browser ใหม่หลัง sync
+  if(!saved){
+    var journalKey = 'tj_noteday_'+S.currentPortfolio+'_'+S.mKey;
+    saved = lsGet(journalKey) || '';
+  }
+
+  // BUG FIX: ล้าง <font> tags เก่าที่เกิดจาก execCommand foreColor แบบเดิม
+  // แปลงเป็น <span style="color:..."> แทน เพื่อให้แสดงผลถูกต้องใน browser ใหม่
+  if(saved && saved.indexOf('<font')>=0){
+    var tmp = document.createElement('div');
+    tmp.innerHTML = saved;
+    tmp.querySelectorAll('font[color]').forEach(function(f){
+      var sp = document.createElement('span');
+      sp.style.color = f.getAttribute('color');
+      while(f.firstChild) sp.appendChild(f.firstChild);
+      f.parentNode.replaceChild(sp, f);
+    });
+    saved = tmp.innerHTML;
+    lsSet(ndStorageKey(), saved); // บันทึก cleaned version กลับ
+  }
+
   editor.innerHTML = saved || '';
   editor.contentEditable='true';
   ndBindImgZoom(editor);
@@ -8058,6 +8116,78 @@ function ndExec(cmd, val){
   var editor=document.getElementById('noteDayEditor');
   editor.focus();
   document.execCommand(cmd, false, val||null);
+}
+
+// ── Color picker helpers ─────────────────────────────────────
+// ปัญหา: เมื่อเปิด color picker browser จะ blur editor → selection หาย
+// แก้: เก็บ Range ก่อนเปิด picker (onmousedown) แล้ว restore ก่อน apply สี
+
+var _ndColorRange = null; // Range ที่เลือกไว้ก่อนเปิด picker
+
+function ndSaveRange(){
+  var sel = window.getSelection();
+  if(sel && sel.rangeCount > 0){
+    _ndColorRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+function _ndRestoreRange(){
+  if(!_ndColorRange) return false;
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(_ndColorRange);
+  return !_ndColorRange.collapsed; // true = มีข้อความเลือกอยู่
+}
+
+function ndApplyTextColor(color){
+  var editor = document.getElementById('noteDayEditor');
+  editor.focus();
+  var hasSelection = _ndRestoreRange();
+  if(hasSelection){
+    // ใช้ span inject แทน execCommand foreColor (ทำงานได้ทุก browser)
+    var sel = window.getSelection();
+    var range = sel.getRangeAt(0);
+    var span = document.createElement('span');
+    span.style.color = color;
+    try{
+      range.surroundContents(span);
+    } catch(e){
+      // surroundContents fail เมื่อ selection ข้ามหลาย element → ใช้ execCommand fallback
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('foreColor', false, color);
+    }
+    // อัปเดตสี indicator ปุ่ม A
+    var aLabel = document.querySelector('#ndTextColor');
+    if(aLabel) aLabel.previousElementSibling.style.color = color;
+  } else {
+    // ไม่มี selection → set สีสำหรับตัวอักษรที่จะพิมพ์ถัดไป
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('foreColor', false, color);
+  }
+  ndAutoSave();
+}
+
+function ndApplyBgColor(color){
+  var editor = document.getElementById('noteDayEditor');
+  editor.focus();
+  var hasSelection = _ndRestoreRange();
+  if(hasSelection){
+    var sel = window.getSelection();
+    var range = sel.getRangeAt(0);
+    var span = document.createElement('span');
+    span.style.backgroundColor = color;
+    try{
+      range.surroundContents(span);
+    } catch(e){
+      // fallback สำหรับ selection ข้าม element
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('hiliteColor', false, color);
+    }
+  } else {
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('hiliteColor', false, color);
+  }
+  ndAutoSave();
 }
 
 function ndSetFontSize(px){
@@ -8269,7 +8399,11 @@ function dtLoad(){
     if(needSave) lsSet('dt_trades',JSON.stringify(DT.trades));
   }catch(e){ DT.trades=DT.trades||[]; }
 }
-function dtSave(){ lsSet('dt_trades',JSON.stringify(DT.trades)); }
+function dtSave(){
+  // BUG6 FIX: บันทึก timestamp ทุกครั้งที่ save — ใช้ตรวจ drift กับ Sheet ได้
+  lsSet('dt_trades', JSON.stringify(DT.trades));
+  lsSet('dt_saved_at', String(Date.now()));
+}
 
 // ── Contract point values for auto-calc ──
 
@@ -11864,16 +11998,16 @@ async function doChangePassword(){
     });
     var data = await res.json();
     if(data.status === 'ok'){
-      // อัปเดต hash ใน session
-      _authSession._hash = newHash;
-      try{
-        var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-        if(saved){ saved._hash = newHash; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-      }catch(e){}
       btn.disabled = false; btn.textContent = '🔑 เปลี่ยนรหัสผ่าน';
-      okEl.textContent = '✅ เปลี่ยนรหัสผ่านสำเร็จ!';
+      okEl.textContent = '✅ เปลี่ยนรหัสผ่านสำเร็จ! กรุณา Login ใหม่';
       okEl.style.display = 'block';
-      setTimeout(function(){ closeM('mChangePass'); }, 1400);
+      // BUG5 FIX: clear session ทันที — ป้องกัน session เก่าใช้ต่อหลังเปลี่ยน password
+      setTimeout(function(){
+        closeM('mChangePass');
+        localStorage.removeItem('tj_session');
+        showToast('🔑 เปลี่ยนรหัสผ่านแล้ว กรุณา Login ใหม่', 'success');
+        setTimeout(function(){ location.reload(); }, 1200);
+      }, 1400);
     } else {
       errEl.textContent = '❌ ' + (data.msg || 'เกิดข้อผิดพลาด');
       errEl.style.display = 'block';
@@ -11934,9 +12068,11 @@ async function saveDisplayName(){
     var res  = await fetch(authUrl, {
       method: 'POST',
       body: JSON.stringify({
-        action:      'updateDisplayName',
-        username:    _authSession.username,
-        displayName: newName
+        action:       'updateDisplayName',
+        username:     _authSession.username,
+        displayName:  newName,
+        // BUG2 FIX: ส่ง hash ยืนยันตัวตน (Google user ส่ง 'GOOGLE_AUTH')
+        passwordHash: _authSession._hash || 'GOOGLE_AUTH'
       })
     });
     var data = await res.json();
