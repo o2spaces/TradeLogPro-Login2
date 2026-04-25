@@ -11762,15 +11762,16 @@ function helpToggle(header){
 
 // ── Edit Display Name ──────────────────────────────────────────
 function openEditDisplayName(){
-  if(!_authSession) return;
+  if(!_authSession){ showToast('❌ กรุณา Login ก่อน','error'); return; }
   var input = document.getElementById('editNameInput');
   var errEl = document.getElementById('editNameErr');
   var okEl  = document.getElementById('editNameOk');
   if(!input) return;
-  // เติมชื่อปัจจุบัน
   input.value = _authSession.displayName || _authSession.username || '';
   if(errEl) errEl.style.display = 'none';
   if(okEl)  okEl.style.display  = 'none';
+  var btn = document.getElementById('editNameBtn');
+  if(btn){ btn.disabled = false; btn.textContent = '💾 บันทึก'; }
   openM('mEditName');
   setTimeout(function(){ input.focus(); input.select(); }, 80);
 }
@@ -11794,42 +11795,58 @@ async function saveDisplayName(){
   okEl.style.display  = 'none';
   btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
 
-  // อัปเดต session local ก่อนเลย
-  _authSession.displayName = newName;
-
-  // อัปเดต UI
-  var uname  = document.getElementById('userDisplayName');
-  var avatar = document.getElementById('userAvatar');
-  if(uname)  uname.textContent  = newName;
-  if(avatar) avatar.textContent = newName.charAt(0).toUpperCase();
-
-  // บันทึกลง localStorage session
-  try{
-    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
-    if(saved){ saved.displayName = newName; localStorage.setItem('tj_session', JSON.stringify(saved)); }
-  }catch(e){}
-
-  // sync กับ Auth Server (ถ้ามี)
   var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
-  if(authUrl && _authSession.username){
-    try{
-      await fetch(authUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action:      'updateDisplayName',
-          username:    _authSession.username,
-          displayName: newName
-        })
-      });
-    }catch(e){ /* silent fail — local เซฟแล้ว */ }
+  if(!authUrl){
+    errEl.textContent = '❌ ไม่พบ Auth Server URL';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = '💾 บันทึก';
+    return;
   }
 
-  btn.disabled = false; btn.textContent = '💾 บันทึก';
-  okEl.textContent = '✅ เปลี่ยนชื่อเป็น "' + newName + '" สำเร็จ!';
-  okEl.style.display = 'block';
-  setTimeout(closeEditDisplayName, 1200);
+  try{
+    // POST ไปที่ GAS เพื่ออัปเดต displayName ใน Auth Sheet
+    var res  = await fetch(authUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        action:      'updateDisplayName',
+        username:    _authSession.username,
+        displayName: newName
+      })
+    });
+    var data = await res.json();
+
+    if(data.status === 'ok'){
+      // อัปเดต session object ใน memory
+      _authSession.displayName = newName;
+
+      // อัปเดต localStorage session ด้วย (เพื่อ session cache ครั้งหน้า)
+      try{
+        var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+        if(saved){ saved.displayName = newName; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+      }catch(e){}
+
+      // อัปเดต UI topbar
+      var uname  = document.getElementById('userDisplayName');
+      var avatar = document.getElementById('userAvatar');
+      if(uname)  uname.textContent  = newName;
+      if(avatar) avatar.textContent = newName.charAt(0).toUpperCase();
+
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+      okEl.textContent = '✅ เปลี่ยนชื่อเป็น "' + newName + '" สำเร็จ!';
+      okEl.style.display = 'block';
+      setTimeout(closeEditDisplayName, 1400);
+    } else {
+      errEl.textContent = '❌ ' + (data.msg || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }catch(e){
+    errEl.textContent = '❌ เชื่อมต่อ Auth Server ไม่ได้: ' + (e.message || 'network error');
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = '💾 บันทึก';
+  }
 }
+</script>
 
 </body>
 </html>
