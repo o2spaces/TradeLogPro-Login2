@@ -653,9 +653,10 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
     </div>
     <div class="sheet-status"><div class="status-dot" id="sDot"></div><span id="sTxt">Offline</span></div>
     <button class="btn-icon" onclick="toggleTheme()" title="สลับธีม Dark/Light" aria-label="Toggle theme">◑</button>
-    <div id="userChip" class="user-chip" style="display:none;">
+    <div id="userChip" class="user-chip" style="display:none;cursor:pointer;" onclick="openEditDisplayName()" title="คลิกเพื่อเปลี่ยนชื่อแสดงผล">
       <div class="user-avatar" id="userAvatar">?</div>
       <span id="userDisplayName" style="color:var(--text-primary);font-weight:500;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <span style="font-size:9px;color:var(--text-muted);margin-left:1px;">✏️</span>
     </div>
     <button class="btn-icon" id="adminBtn" title="👥 Admin Panel" onclick="openAdminPanel()"
       style="display:none;color:var(--purple);border-color:rgba(168,85,247,.35);">👥</button>
@@ -11701,6 +11702,30 @@ document.addEventListener('mouseup', function(){
   </div>
 </div>
 
+<!-- ─── EDIT DISPLAY NAME MODAL ──────────────────────────────── -->
+<div class="modal-backdrop" id="mEditName">
+  <div class="modal" style="max-width:380px;width:94vw;">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span>✏️</span>
+        <span style="font-size:14px;font-weight:600;">เปลี่ยนชื่อแสดงผล</span>
+      </div>
+      <button class="modal-close" onclick="closeEditDisplayName()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:18px;">
+      <div id="editNameErr" style="background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.3);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--red);margin-bottom:12px;display:none;"></div>
+      <div id="editNameOk"  style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.3);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--green);margin-bottom:12px;display:none;"></div>
+      <div class="auth-label" style="margin-bottom:5px;">ชื่อแสดงผลใหม่</div>
+      <input id="editNameInput" class="settings-input" type="text" placeholder="ใส่ชื่อที่อยากให้แสดง..." style="width:100%;margin-bottom:14px;" maxlength="40"
+        onkeydown="if(event.key==='Enter') saveDisplayName()">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn-sm" onclick="closeEditDisplayName()">ยกเลิก</button>
+        <button id="editNameBtn" class="btn-primary" onclick="saveDisplayName()" style="font-size:12px;">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── AUTH + ADMIN JAVASCRIPT ──────────────────────────────── -->
 <script>
 function helpTab(el, id){
@@ -11733,6 +11758,77 @@ function helpToggle(header){
     content.style.display='none';
     if(arrow) arrow.textContent='▼';
   }
+}
+
+// ── Edit Display Name ──────────────────────────────────────────
+function openEditDisplayName(){
+  if(!_authSession) return;
+  var input = document.getElementById('editNameInput');
+  var errEl = document.getElementById('editNameErr');
+  var okEl  = document.getElementById('editNameOk');
+  if(!input) return;
+  // เติมชื่อปัจจุบัน
+  input.value = _authSession.displayName || _authSession.username || '';
+  if(errEl) errEl.style.display = 'none';
+  if(okEl)  okEl.style.display  = 'none';
+  openM('mEditName');
+  setTimeout(function(){ input.focus(); input.select(); }, 80);
+}
+
+function closeEditDisplayName(){
+  closeM('mEditName');
+}
+
+async function saveDisplayName(){
+  var input  = document.getElementById('editNameInput');
+  var errEl  = document.getElementById('editNameErr');
+  var okEl   = document.getElementById('editNameOk');
+  var btn    = document.getElementById('editNameBtn');
+  if(!input || !_authSession) return;
+
+  var newName = input.value.trim();
+  if(!newName){ errEl.textContent='❌ กรุณาใส่ชื่อก่อน'; errEl.style.display='block'; return; }
+  if(newName.length > 40){ errEl.textContent='❌ ชื่อยาวเกินไป (สูงสุด 40 ตัวอักษร)'; errEl.style.display='block'; return; }
+
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+  btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
+
+  // อัปเดต session local ก่อนเลย
+  _authSession.displayName = newName;
+
+  // อัปเดต UI
+  var uname  = document.getElementById('userDisplayName');
+  var avatar = document.getElementById('userAvatar');
+  if(uname)  uname.textContent  = newName;
+  if(avatar) avatar.textContent = newName.charAt(0).toUpperCase();
+
+  // บันทึกลง localStorage session
+  try{
+    var saved = JSON.parse(localStorage.getItem('tj_session') || 'null');
+    if(saved){ saved.displayName = newName; localStorage.setItem('tj_session', JSON.stringify(saved)); }
+  }catch(e){}
+
+  // sync กับ Auth Server (ถ้ามี)
+  var authUrl = (typeof window.AUTH_GAS_URL !== 'undefined') ? window.AUTH_GAS_URL : '';
+  if(authUrl && _authSession.username){
+    try{
+      await fetch(authUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action:      'updateDisplayName',
+          username:    _authSession.username,
+          displayName: newName
+        })
+      });
+    }catch(e){ /* silent fail — local เซฟแล้ว */ }
+  }
+
+  btn.disabled = false; btn.textContent = '💾 บันทึก';
+  okEl.textContent = '✅ เปลี่ยนชื่อเป็น "' + newName + '" สำเร็จ!';
+  okEl.style.display = 'block';
+  setTimeout(closeEditDisplayName, 1200);
 }
 
 </body>
