@@ -4,7 +4,7 @@
 //  ไฟล์นี้ไม่ควรแชร์ให้ User ทั่วไป
 // ═══════════════════════════════════════════════════════════════
 
-window.AUTH_GAS_URL = 'https://script.google.com/macros/s/AKfycbxZ_Og81D5wqtijoLkNh3C4W2iFJUc7A6D8j8ylbpoe1416fvNa__m4ifehdkUw5RrqPw/exec';
+window.AUTH_GAS_URL = 'https://script.google.com/macros/s/AKfycbxEDc9JFhOkiDosNw2JN6txEMO0C7vAl8NlVJr_ilhT8t4iiRDmFZWD-s-fEH3iehU3Og/exec';
 
 // Google OAuth 2.0 Client ID (จาก Google Cloud Console → Credentials)
 window.GOOGLE_CLIENT_ID = '1008136012501-2a6m6ulfb99f5h8jrvc8arpak85t9ckk.apps.googleusercontent.com';
