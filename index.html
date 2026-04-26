@@ -1847,7 +1847,7 @@ function saveDataTrade(d){
   var sh=_sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   var id=String(d._id||d.id||Date.now());
   var row=[
-    id, d.date||&#x27;&#x27;, d.portfolio||&#x27;data&#x27;,
+    id, d.date||&#x27;&#x27;, d.portfolio||&#x27;data_default&#x27;, // Bug #8 FIX
     d.session||&#x27;&#x27;, d.asset||&#x27;&#x27;, d.side||&#x27;Long&#x27;,
     d.entry||&#x27;&#x27;, d.close||&#x27;&#x27;, d.tp||&#x27;&#x27;, d.sl||&#x27;&#x27;, d.fiboLevel||&#x27;&#x27;,
     parseFloat(d.pnl)||0, parseFloat(d.fees)||0, parseFloat(d.commission)||0,
@@ -1863,7 +1863,7 @@ function saveDataTrade(d){
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
   var pnl=parseFloat(d.pnl)||0;
   _styleDataRow(sh,existing,d.result,pnl);
-  _log(&#x27;saveDataTrade&#x27;,&#x27;id=&#x27;+id+&#x27; date=&#x27;+d.date+&#x27; asset=&#x27;+d.asset+&#x27; pnl=&#x27;+pnl+&#x27; result=&#x27;+d.result,d.portfolio||&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  _log(&#x27;saveDataTrade&#x27;,&#x27;id=&#x27;+id+&#x27; date=&#x27;+d.date+&#x27; asset=&#x27;+d.asset+&#x27; pnl=&#x27;+pnl+&#x27; result=&#x27;+d.result,d.portfolio||&#x27;data_default&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
   return {status:&#x27;ok&#x27;,id:id};
 }
 
@@ -1876,7 +1876,7 @@ function batchSaveDataTrades(d){
     var id=String(t._id||t.id)||(Date.now().toString(36)+Math.random().toString(36).slice(2,10));
     var pnl=parseFloat(t.pnl)||0;
     var row=[
-      id, t.date||&#x27;&#x27;, t.portfolio||&#x27;data&#x27;,
+      id, t.date||&#x27;&#x27;, t.portfolio||&#x27;data_default&#x27;, // Bug #8 FIX
       t.session||&#x27;&#x27;, t.asset||&#x27;&#x27;, t.side||&#x27;Long&#x27;,
       t.entry||&#x27;&#x27;, t.close||&#x27;&#x27;, t.tp||&#x27;&#x27;, t.sl||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
@@ -1892,7 +1892,7 @@ function batchSaveDataTrades(d){
     else{ sh.appendRow(row); existing=sh.getLastRow(); }
     _styleDataRow(sh,existing,t.result,pnl);
   });
-  _log(&#x27;batchSaveDataTrades&#x27;,&#x27;count=&#x27;+trades.length,d.portfolio||&#x27;data&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
+  _log(&#x27;batchSaveDataTrades&#x27;,&#x27;count=&#x27;+trades.length,d.portfolio||&#x27;data_default&#x27;,&#x27;data&#x27;,&#x27;ok&#x27;);
   return {status:&#x27;ok&#x27;,count:trades.length};
 }
 
@@ -1958,14 +1958,22 @@ function batchSaveTrades(d){
   trades.forEach(function(t){
     var id=String(t.id||Date.now()+Math.random());
     var pnl=parseFloat(t.pnl)||0;
+    var fees=parseFloat(t.fees)||0;
+    var comm=parseFloat(t.commission)||0;
+    // BUG-A FIX: column order must match HDR.TRADES exactly
+    // ID,Date,Portfolio,Asset,Side,Lots,Entry,Close,TP,SL,FiboLevel,
+    // PnL($),Fees($),Commission($),Result,Risk,MaxRR,TimeInPos,SetupDuration,
+    // EntryDateTime,CloseDateTime,SetupClass,Candle,Code,Mode,Timeframe,
+    // Trend,Zone,Confirm,Sessions,Emotion,Discipline,Note,ImageLink,UpdatedAt
     var row=[
       id, t.date||&#x27;&#x27;, t.portfolio||&#x27;default&#x27;,
       t.asset||&#x27;&#x27;, t.side||&#x27;&#x27;, parseFloat(t.lots)||0,
       parseFloat(t.entry)||0, parseFloat(t.close)||0,
       parseFloat(t.tp)||0, parseFloat(t.sl)||0,
-      pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
+      t.fiboLevel||&#x27;&#x27;,
+      pnl, fees, comm,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;,
-      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
+      t.entryDate||&#x27;&#x27;, t.closeDate||&#x27;&#x27;,
       t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
       t.trend||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;, t.sessions||&#x27;&#x27;,
       t.emotion||&#x27;&#x27;, t.discipline||&#x27;&#x27;,
@@ -1997,11 +2005,24 @@ function saveSession(d){
   var ts=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET.TRADES);
   var pnl=0,wins=0,losses=0,gp=0,gl=0,pnls=[];
   if(ts&amp;&amp;ts.getLastRow()&gt;1){
-    var rows=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===d.date &amp;&amp; (r[2]||&#x27;default&#x27;)===portfolio;
+    var allRows=ts.getDataRange().getValues();
+    var hdr=allRows[0];
+    // Bug #3 FIX: header lookup
+    var iPnl=hdr.indexOf(&#x27;PnL($)&#x27;);   if(iPnl&lt;0) iPnl=11;
+    var iDate=hdr.indexOf(&#x27;Date&#x27;);      if(iDate&lt;0) iDate=1;
+    var iPort=hdr.indexOf(&#x27;Portfolio&#x27;); if(iPort&lt;0) iPort=2;
+    var iEntry=hdr.indexOf(&#x27;EntryDateTime&#x27;); if(iEntry&lt;0) iEntry=19;
+    var rows=allRows.slice(1).filter(function(r){
+      return r[iDate]===d.date &amp;&amp; (r[iPort]||&#x27;default&#x27;)===portfolio;
+    });
+    // Bug #5 FIX: sort by EntryDateTime
+    rows.sort(function(a,b){
+      var da=a[iEntry]?new Date(a[iEntry]):new Date(0);
+      var db=b[iEntry]?new Date(b[iEntry]):new Date(0);
+      return da-db;
     });
     rows.forEach(function(r){
-      var p=parseFloat(r[10])||0; pnls.push(p); pnl+=p;
+      var p=parseFloat(r[iPnl])||0; pnls.push(p); pnl+=p;
       if(p&gt;0){wins++;gp+=p;} else if(p&lt;0){losses++;gl+=Math.abs(p);}
     });
   }
@@ -2009,7 +2030,8 @@ function saveSession(d){
   var wr=total?Math.round(wins/total*100):0;
   var avgW=wins?+(gp/wins).toFixed(2):0;
   var avgL=losses?+(gl/losses).toFixed(2):0;
-  var pf=gl?+(gp/gl).toFixed(2):0;
+  // Bug #4 FIX: ป้องกัน Infinity
+  var pf=gl&gt;0?+(gp/gl).toFixed(2):(gp&gt;0?999:0);
   var cum=0,peak=0,dd=0;
   pnls.forEach(function(p){cum+=p;if(cum&gt;peak)peak=cum;if(peak-cum&gt;dd)dd=peak-cum;});
   var row=[
@@ -2087,11 +2109,28 @@ function _recalc(date,portfolio){
   var sum=_sheet(SHEET.SUMMARY,HDR.SUMMARY);
   var trades=[];
   if(ts&amp;&amp;ts.getLastRow()&gt;1){
-    trades=ts.getDataRange().getValues().slice(1).filter(function(r){
-      return r[1]===date &amp;&amp; (r[2]||&#x27;default&#x27;)===portfolio;
+    var allRows=ts.getDataRange().getValues();
+    var hdr=allRows[0];
+    // Bug #3 FIX: header lookup แทน hardcode index
+    var iPnl=hdr.indexOf(&#x27;PnL($)&#x27;); if(iPnl&lt;0) iPnl=11;
+    var iDate=hdr.indexOf(&#x27;Date&#x27;);   if(iDate&lt;0) iDate=1;
+    var iPort=hdr.indexOf(&#x27;Portfolio&#x27;); if(iPort&lt;0) iPort=2;
+    var iEntry=hdr.indexOf(&#x27;EntryDateTime&#x27;); if(iEntry&lt;0) iEntry=19;
+    trades=allRows.slice(1).filter(function(r){
+      return r[iDate]===date &amp;&amp; (r[iPort]||&#x27;default&#x27;)===portfolio;
+    });
+    // Bug #5 FIX: sort by EntryDateTime ก่อนคำนวณ MaxDD
+    trades.sort(function(a,b){
+      var da=a[iEntry]?new Date(a[iEntry]):new Date(0);
+      var db=b[iEntry]?new Date(b[iEntry]):new Date(0);
+      return da-db;
     });
   }
-  var pnls=trades.map(function(r){return parseFloat(r[10])||0;});
+  var pnls=trades.map(function(r){
+    var iPnl2=ts&amp;&amp;ts.getLastRow()&gt;1?ts.getDataRange().getValues()[0].indexOf(&#x27;PnL($)&#x27;):-1;
+    if(iPnl2&lt;0) iPnl2=11;
+    return parseFloat(r[iPnl2])||0;
+  });
   var net=pnls.reduce(function(s,v){return s+v;},0);
   var gp=pnls.filter(function(v){return v&gt;0;}).reduce(function(s,v){return s+v;},0);
   var gl=Math.abs(pnls.filter(function(v){return v&lt;0;}).reduce(function(s,v){return s+v;},0));
@@ -2101,7 +2140,8 @@ function _recalc(date,portfolio){
   var wr=total?Math.round(wins/total*100):0;
   var avgW=wins?+(gp/wins).toFixed(2):0;
   var avgL=losses?+(gl/losses).toFixed(2):0;
-  var pf=gl?+(gp/gl).toFixed(2):0;
+  // Bug #4 FIX: ป้องกัน Infinity เมื่อ GrossLoss=0
+  var pf=gl&gt;0?+(gp/gl).toFixed(2):(gp&gt;0?999:0);
   var best=pnls.length?Math.max.apply(null,pnls):0;
   var worst=pnls.length?Math.min.apply(null,pnls):0;
   var cum=0,peak=0,dd=0;
@@ -4104,9 +4144,15 @@ var FC_DEFAULT_COMM={NQ1:1.00,MNQ1:0.50,GC1:1.00,MGC1:0.50,'XAU/USD':0};
 function fcStorageKey(fund){return 'tj_fc_'+(fund||'default');}
 function loadFCConfig(fund){
   var saved=lsGet(fcStorageKey(fund));
-  if(saved) return JSON.parse(saved);
+  if(saved){
+    var cfg=JSON.parse(saved);
+    // Bug #6 FIX: ensure defaultFees/defaultComm exist even in old saved configs
+    if(cfg.defaultFees===undefined) cfg.defaultFees=0;
+    if(cfg.defaultComm===undefined) cfg.defaultComm=0;
+    return cfg;
+  }
   // fallback defaults
-  var cfg={fees:{},comm:{}};
+  var cfg={fees:{},comm:{},defaultFees:0,defaultComm:0};
   FC_ASSETS.forEach(function(a){cfg.fees[a]=FC_DEFAULT_FEES[a]||0;cfg.comm[a]=FC_DEFAULT_COMM[a]||0;});
   return cfg;
 }
@@ -4139,6 +4185,12 @@ function openFeesConfig(){
         +'<td style="padding:4px 6px;"><input type="number" step="0.01" class="form-input" data-fc-comm="'+a+'" value="'+c+'" style="width:90px;font-size:12px;text-align:right;"></td>'
         +'</tr>';
     }).join('');
+    // Bug #6 FIX: เพิ่ม default rate สำหรับ custom asset ที่ไม่อยู่ในรายการ
+    rows+='<tr style="border-top:1px dashed var(--border);margin-top:4px;">'
+      +'<td style="padding:6px 8px;font-size:11px;color:var(--text-muted);">Custom asset (default)</td>'
+      +'<td style="padding:4px 6px;"><input type="number" step="0.01" class="form-input" id="fcDefaultFees" value="'+(cfg.defaultFees||0)+'" style="width:90px;font-size:12px;text-align:right;" title="ใช้กับ asset ที่ไม่อยู่ในรายการ"></td>'
+      +'<td style="padding:4px 6px;"><input type="number" step="0.01" class="form-input" id="fcDefaultComm" value="'+(cfg.defaultComm||0)+'" style="width:90px;font-size:12px;text-align:right;" title="ใช้กับ asset ที่ไม่อยู่ในรายการ"></td>'
+      +'</tr>';
     return '<table style="width:100%;border-collapse:collapse;">'
       +'<thead><tr style="border-bottom:1px solid var(--border);">'
       +'<th style="text-align:left;padding:5px 8px;font-size:10px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;">ASSET</th>'
@@ -4179,6 +4231,11 @@ function fcReload(fund){
     if(fEl) fEl.value=cfg.fees[a]!==undefined?cfg.fees[a]:(FC_DEFAULT_FEES[a]||0);
     if(cEl) cEl.value=cfg.comm[a]!==undefined?cfg.comm[a]:(FC_DEFAULT_COMM[a]||0);
   });
+  // BUG-D FIX: reload defaultFees/defaultComm fields too
+  var dfEl=document.getElementById('fcDefaultFees');
+  var dcEl=document.getElementById('fcDefaultComm');
+  if(dfEl) dfEl.value=cfg.defaultFees||0;
+  if(dcEl) dcEl.value=cfg.defaultComm||0;
 }
 
 function fcSave(){
@@ -4193,6 +4250,11 @@ function fcSave(){
     cfg.fees[a]=fEl?parseFloat(fEl.value)||0:0;
     cfg.comm[a]=cEl?parseFloat(cEl.value)||0:0;
   });
+  // Bug #6 FIX: บันทึก default rate สำหรับ custom asset
+  var dfEl=document.getElementById('fcDefaultFees');
+  var dcEl=document.getElementById('fcDefaultComm');
+  cfg.defaultFees=dfEl?parseFloat(dfEl.value)||0:0;
+  cfg.defaultComm=dcEl?parseFloat(dcEl.value)||0:0;
   saveFCConfig(fund,cfg);
   showToast('✅ บันทึก Fees & Commission สำหรับ "'+fund+'" แล้ว','success');
 }
@@ -4323,12 +4385,18 @@ function deleteFundItem(fundName, btn){
 function getFeesForAsset(asset){
   var fund=getCurrentFund();
   var cfg=loadFCConfig(fund);
-  return cfg.fees[asset]!==undefined?cfg.fees[asset]:(FEES[asset]||0);
+  if(cfg.fees[asset]!==undefined) return cfg.fees[asset];
+  if(FEES[asset]!==undefined) return FEES[asset];
+  // Bug #6 FIX: custom asset ที่ไม่อยู่ใน config → ใช้ default rate แทน 0
+  return cfg.defaultFees!==undefined ? cfg.defaultFees : 0;
 }
 function getCommForAsset(asset){
   var fund=getCurrentFund();
   var cfg=loadFCConfig(fund);
-  return cfg.comm[asset]!==undefined?cfg.comm[asset]:(COMM[asset]||0);
+  if(cfg.comm[asset]!==undefined) return cfg.comm[asset];
+  if(COMM[asset]!==undefined) return COMM[asset];
+  // Bug #6 FIX: custom asset → ใช้ default comm rate
+  return cfg.defaultComm!==undefined ? cfg.defaultComm : 0;
 }
 // ──────────────────────────────────────────────────────────────
 var DROP_DEFAULTS = {
@@ -4697,6 +4765,12 @@ function chYear(d){S.viewYear+=d;renderWeekly();}
 
 function allTrades(){var a=[];Object.values(S.trades).forEach(function(arr){a=a.concat(arr);});return a;}
 function calcSt(trades){
+  // BUG-C FIX: sort by date+entryDate before DD calc
+  trades = trades.slice().sort(function(a,b){
+    var ka=(a.date||'')+(a.entryDate||a.entryDateRaw||'');
+    var kb=(b.date||'')+(b.entryDate||b.entryDateRaw||'');
+    return ka<kb?-1:ka>kb?1:0;
+  });
   var pnl=trades.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);
   var wins=trades.filter(function(t){return parseFloat(t.pnl)>0;});
   var losses=trades.filter(function(t){return parseFloat(t.pnl)<0;});
@@ -5090,7 +5164,23 @@ function openM(id){
 function mTab(el,id){document.querySelectorAll('.modal-tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');mTabById(id);}
 function mTabById(id){['tComment','tNoteDay','tOrder','tAnalysis'].forEach(function(t){var el=document.getElementById(t);if(el)el.style.display=t===id?'block':'none';});if(id==='tNoteDay')ndLoadContent();}
 
-var POINT_VAL={MNQ1:2,NQ1:20,MGC1:10,GC1:100,'XAU/USD':1,EURUSD:1,GBPUSD:1,USDJPY:0.01,BTCUSD:1};
+// Bug #2 FIX: POINT_VAL = dollar value per 1 point move per 1 lot
+// Futures: ถูกต้องอยู่แล้ว (NQ1=$20/pt, MNQ1=$2/pt, GC1=$100/pt, MGC1=$10/pt)
+// Forex standard lot (100,000 units): EURUSD/GBPUSD = $10/pip (1pip=0.0001, 100000×0.0001=$10)
+// → POINT_VAL ต้องเป็น 10/0.0001 = 100,000 เพื่อให้ (price_diff × lots × PV) = $ ถูกต้อง
+// แต่ถ้า user ใส่ lots = 1.0 หมายถึง 1 standard lot → ใช้ pip value per lot แทนได้ง่ายกว่า
+// วิธีที่ถูก: netPnl = pip_diff × pip_value_per_lot × lots
+//   EURUSD/GBPUSD: pip_value ≈ $10/lot → POINT_VAL = 10/0.0001 = 100,000 — แต่ผู้ใช้อาจสับสน
+// จึงใช้ POINT_VAL = pip_value (10) และ price_diff หารด้วย pip_size (0.0001) ภายใน calcPnl
+// → เพื่อไม่ให้ break logic เดิม ให้ set POINT_VAL = pip_value/pip_size
+var POINT_VAL={
+  MNQ1:2, NQ1:20, MGC1:10, GC1:100,
+  'XAU/USD':1,
+  EURUSD:100000,   // $10/pip/lot ÷ 0.0001 pip = 100,000
+  GBPUSD:100000,   // same as EURUSD
+  USDJPY:1000,     // $9.xx/pip/lot ÷ 0.001 pip ≈ 9000, แต่ใช้ 1000 เพราะ pip=0.01 บาง broker
+  BTCUSD:1
+};
 var S_result='BE';
 var _riskWarnDismissed=false;
 var _isReadOnly=false;
@@ -5190,8 +5280,10 @@ function calcPnl(){
     var pv=POINT_VAL[asset]||1;
     var dir=(S.side==='Long')?1:-1;
     var refPrice=cl||0;
-    if(!refPrice&&tp&&S_result==='Win') refPrice=tp;
+    if(!refPrice&&tp&&S_result==='Win')  refPrice=tp;
     if(!refPrice&&sl&&S_result==='Loss') refPrice=sl;
+    // Bug #1 FIX: result=BE ไม่มี close/tp/sl → ใช้ entry เป็น refPrice → gross=0
+    if(!refPrice&&S_result==='BE') refPrice=en;
     if(refPrice){
       var grossPnl=(refPrice-en)*lots*pv*dir;
       var comm=parseFloat(document.getElementById('oComm').value)||0;
@@ -6587,7 +6679,29 @@ function exportCSV(){
   var total=rows.length-1;
   showToast('📊 Export '+total+' trades ('+h.length+' fields) สำเร็จ','success');
 }
-function importCSV(){var i=document.createElement('input');i.type='file';i.accept='.csv';i.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{var lines=ev.target.result.split('\n').filter(Boolean);var cnt=0;lines.slice(1).forEach(function(l){var c=l.split(',').map(function(x){return x.replace(/^"|"$/g,'').trim();});var date=c[0];if(!date)return;if(!S.trades[date])S.trades[date]=[];S.trades[date].push({asset:c[1]||'',side:c[2]||'Long',lots:c[3]||'',entry:c[4]||'',tp:c[5]||'',sl:c[6]||'',pnl:c[7]||'0',commission:c[8]||'0',note:c[9]||'',id:_uuid()});cnt++;});persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();showToast('📥 Import '+cnt+' trades','success');}catch(err){showToast('❌ ไฟล์ CSV ไม่ถูกต้อง','error');}};r.readAsText(f);};i.click();}
+function importCSV(){var i=document.createElement('input');i.type='file';i.accept='.csv';i.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{var lines=ev.target.result.split('\n').filter(Boolean);var cnt=0;lines.slice(1).forEach(function(l){var c=l.split(',').map(function(x){return x.replace(/^"|"$/g,'').trim();});var date=c[0];if(!date)return;if(!S.trades[date])S.trades[date]=[];var ipnl=parseFloat(c[7])||0;
+          S.trades[date].push({
+            id:_uuid(),date:date,portfolio:S.currentPortfolio,
+            asset:c[1]||'',side:c[2]||'Long',lots:c[3]||'',
+            entry:c[4]||'',tp:c[5]||'',sl:c[6]||'',
+            pnl:ipnl.toFixed(2),
+            commission:c[8]||'0',fees:'0',
+            // BUG-E FIX: auto-set result from pnl
+            result:ipnl>0?'Win':ipnl<0?'Loss':'BE',
+            note:c[9]||''
+          });cnt++;});persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();
+          showToast('📥 Import '+cnt+' trades','success');
+          // BUG-E2 FIX: sync imported trades to Sheet
+          if(S.scriptUrl){
+            var batchImport=[];
+            Object.keys(S.trades).forEach(function(date){
+              (S.trades[date]||[]).forEach(function(t){
+                if(t.portfolio===S.currentPortfolio) batchImport.push(Object.assign({date:date},t));
+              });
+            });
+            if(batchImport.length) sendSheet('batchSaveTrades',{portfolio:S.currentPortfolio,trades:batchImport});
+          }
+        }catch(err){showToast('❌ ไฟล์ CSV ไม่ถูกต้อง','error');}};r.readAsText(f);};i.click();}
 
 // SIDEBAR COLLAPSE
 var _leftCollapsed  = false;
@@ -7884,7 +7998,7 @@ function parseTopstepCSV(text){
       closeDate:exitedAt,
       timeInPos:formatTopstepDuration(col(parts,'TradeDuration')),
       note:'',imgLink:'',maxRR:'',setupClass:'',candle:'',code:'',mode:'',tf:'',trend:'',zone:'',confirm:'',sessions:'',emotion:5,discipline:5,
-      id:Date.now()+i,
+      id:_uuid(), // BUG-B FIX: use _uuid() not Date.now()+i
       _dateKey:dateKey
     };
     // Merge key: same asset + side + entryPrice + entryTime → รวมเป็น 1 ออเดอร์
@@ -8861,7 +8975,7 @@ function dtSaveTrade(){
     emo:DT.emo,disc:DT.disc,
     discipline:'วินัย '+DT.disc+'/10',
     note:gv('dtNote'),imgLink:gv('dtImgLink'),
-    portfolio:'data',
+    portfolio: 'data_'+(S.currentPortfolio||'default'),  // Bug #8 FIX: prefix data_ + portfolio แทน hardcode 'data'
     _src:'data'
   };
   _dtPendingTrade=t;
