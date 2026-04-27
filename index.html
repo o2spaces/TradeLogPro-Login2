@@ -1734,7 +1734,12 @@ function loadAll(){
         var date=String(obj[&#x27;Date&#x27;]||obj[&#x27;date&#x27;]||&#x27;&#x27;).trim().substring(0,10);
         var port=String(obj[&#x27;Portfolio&#x27;]||obj[&#x27;portfolio&#x27;]||&#x27;default&#x27;).trim();
         var html=String(obj[&#x27;NoteHTML&#x27;]||obj[&#x27;noteHTML&#x27;]||&#x27;&#x27;).trim();
-        if(date&amp;&amp;html) result.journal.push({date:date,portfolio:port,noteHTML:html});
+        if(date&amp;&amp;html){
+          result.journal.push({
+            date:date, portfolio:port, noteHTML:html,
+            notePlain:String(obj[&#x27;NotePlain&#x27;]||obj[&#x27;notePlain&#x27;]||&#x27;&#x27;).substring(0,500)
+          });
+        }
       });
     }
     return result;
@@ -1816,17 +1821,18 @@ function saveNoteDay(d){
   var portfolio=d.portfolio||&#x27;default&#x27;;
   var date=d.date||&#x27;&#x27;;
   if(!date) return {status:&#x27;error&#x27;,msg:&#x27;missing date&#x27;};
-  // strip base64 images from HTML before saving to keep sheet lightweight
-  var html=(d.noteHTML||&#x27;&#x27;).replace(/src=&quot;data:[^&quot;]{0,20000}&quot;/g,&#x27;src=&quot;[image]&quot;&#x27;);
-  // plain text fallback (strip tags)
-  var plain=(d.notePlain||html.replace(/&lt;[^&gt;]*&gt;/g,&#x27; &#x27;).replace(/\s+/g,&#x27; &#x27;).trim()).substring(0,5000);
-  var row=[date, portfolio, html, plain, _now()];
+  // FIX: เก็บ HTML เต็มรูปแบบ (รวมรูป base64 ที่บีบแล้วจาก frontend)
+  // ไม่ strip รูปออก → รูปจะโหลดกลับมาจาก Sheet ได้ถูกต้อง
+  var html=d.noteHTML||&#x27;&#x27;;
+  // plain text สำหรับค้นหา (max 50000 chars) — strip เฉพาะ base64 ออกจาก plain text
+  var plainSrc=(d.notePlain||html.replace(/src=&quot;data:[^&quot;]*&quot;/g,&#x27;[image]&#x27;)
+    .replace(/&lt;[^&gt;]*&gt;/g,&#x27; &#x27;).replace(/\s+/g,&#x27; &#x27;).trim()).substring(0,5000);
+  var row=[date, portfolio, html, plainSrc, _now()];
   var existing=_findRow2(sh,1,date,2,portfolio);
   if(existing&gt;0) sh.getRange(existing,1,1,row.length).setValues([row]);
   else{ sh.appendRow(row); existing=sh.getLastRow(); }
-  var bg=&#x27;#1a1c2e&#x27;;
-  sh.getRange(existing,1,1,row.length).setBackground(bg).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(10);
-  _log(&#x27;saveNoteDay&#x27;,&#x27;date=&#x27;+date+&#x27; len=&#x27;+html.length,portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
+  sh.getRange(existing,1,1,row.length).setBackground(&#x27;#1a1c2e&#x27;).setFontColor(&#x27;#e8eaf0&#x27;).setFontSize(10);
+  _log(&#x27;saveNoteDay&#x27;,&#x27;date=&#x27;+date+&#x27; htmlLen=&#x27;+html.length+&#x27; hasImg=&#x27;+(html.indexOf(&#x27;data:image&#x27;)&gt;=0),portfolio,&#x27;port&#x27;,&#x27;ok&#x27;);
   return {status:&#x27;ok&#x27;,date:date,portfolio:portfolio};
 }
 function loadAssets(){
@@ -3288,10 +3294,10 @@ function _migrateUserStorage(){
 }
 
 var S={sessions:{},trades:{},scriptUrl:'',
-  // BUG3 FIX: API keys อยู่ใน S._k แทน S.keys — ชื่อไม่ชัด ลดโอกาส typo ดึง key ออก
-  // (ยังไม่ ideal — server-side proxy ดีกว่า แต่ช่วยลด surface area ได้)
   get keys(){ return this._k; }, set keys(v){ this._k = v; }, _k:{mGem:'gemini-2.5-flash-preview-05-20',mGroq:'llama-4-scout-17b-16e-instruct'},
-  prov:'gemini',provBackup:'groq',viewMonth:new Date(),viewYear:new Date().getFullYear(),emo:'😡',side:'Long',mKey:'',mTrades:[],upB64:null,eqChart:null,eqChartW:null,currentPortfolio:'default',portfolios:{}};
+  prov:'gemini',provBackup:'groq',viewMonth:new Date(),viewYear:new Date().getFullYear(),emo:'😡',side:'Long',mKey:'',mTrades:[],upB64:null,eqChart:null,eqChartW:null,currentPortfolio:'default',portfolios:{},
+  journal:{} // memory store สำหรับ Note of Day — ไม่เขียน localStorage เมื่อมี Sheet
+};
 
 // ── สั่ง GAS ล้าง duplicate rows ใน Sheet ──
 function cleanSheetDuplicates(){
@@ -3486,10 +3492,11 @@ function syncFromSheet(onDone){
 
         var byPort = {};
         d.trades.forEach(function(t){
-          // Sheet headers: ID,Date,Portfolio,Asset,Side,Lots,Entry,Close,TP,SL,
-          //   PnL($),Fees($),Commission($),Result,Risk,MaxRR,TimeInPos,
-          //   EntryDateTime,CloseDateTime,SetupClass,Candle,Code,Mode,Timeframe,
-          //   Trend,Zone,Confirm,Sessions,Emotion,Discipline,Note,ImageLink,UpdatedAt
+          // Sheet headers (ตรงกับ HDR.TRADES):
+          // ID, Date, Portfolio, Asset, Side, Lots, Entry, Close, TP, SL, FiboLevel,
+          // PnL($), Fees($), Commission($), Result, Risk, MaxRR, TimeInPos, SetupDuration,
+          // EntryDateTime, CloseDateTime, SetupClass, Candle, Code, Mode, Timeframe,
+          // Trend, Zone, Confirm, Sessions, Emotion, Discipline, Note, ImageLink, UpdatedAt
           var port = gs(t,['Portfolio','portfolio']) || 'default';
           var date = (gs(t,['Date','date'])||'').replace(/\s.*$/,'').trim(); // strip time part if _cv included it
           if(!date) return;
@@ -3643,8 +3650,13 @@ function syncFromSheet(onDone){
             sheetSess.notesHistory = sheetNH.length >= localNH.length ? sheetNH : localNH;
             existing[date] = sheetSess;
           });
-          lsSet('port_'+port+'_s', JSON.stringify(existing));
+          // BUG4 FIX: เขียน memory เสมอ เขียน localStorage เฉพาะไม่มี Sheet
           if(port === S.currentPortfolio){ S.sessions = existing; }
+          if(!S.scriptUrl){ lsSet('port_'+port+'_s', JSON.stringify(existing)); }
+          else {
+            // มี Sheet → เขียนเฉพาะ cache สำหรับ switchPortfolio
+            try{ lsSet('port_'+port+'_s', JSON.stringify(existing)); }catch(e){}
+          }
         });
       }
 
@@ -3759,20 +3771,29 @@ function syncFromSheet(onDone){
           });
           if(_dedupDT.length!==newDT.length)
             console.log('[sync] DataTrades: deduped '+(newDT.length-_dedupDT.length)+' rows');
-          lsSet('dt_trades', JSON.stringify(_dedupDT));
+          // โหลดเข้า DT.trades (memory) โดยตรง — localStorage เป็นแค่ fallback offline
+          DT.trades = _dedupDT;
+          if(!S.scriptUrl) lsSet('dt_trades', JSON.stringify(_dedupDT)); // offline only
         }
       }
 
-      // ── Reload current portfolio data ──
-      S.sessions = getPortSessions();
-      S.trades   = getPortTrades();
-      // ── Journal: sync Note of Day จาก Sheet → localStorage ──
+      // ── Reload current portfolio data into memory ──
+      // ถ้ามี Sheet → S.sessions/S.trades ถูก populate จาก d.sessions/d.trades ข้างบนแล้ว
+      // ถ้าไม่มี Sheet → อ่าน localStorage
+      if(!S.scriptUrl){
+        S.sessions = getPortSessions();
+        S.trades   = getPortTrades();
+      }
+      // ── Journal: sync Note of Day จาก Sheet → S.journal (memory) ──
+      // ไม่เขียน localStorage อีกต่อไป → ไม่มีวันเต็ม
       if(d.journal && d.journal.length){
+        if(!S.journal) S.journal={};
         d.journal.forEach(function(j){
           if(j.date && j.noteHTML){
-            var key='tj_noteday_'+(j.portfolio||'default')+'_'+j.date;
-            // ใช้ข้อมูลจาก Sheet ถ้า localStorage ว่างอยู่ หรือ Sheet ใหม่กว่า (overwrite เสมอ)
-            lsSet(key, j.noteHTML);
+            var memKey=(j.portfolio||'default')+'_'+j.date;
+            S.journal[memKey] = j.noteHTML;
+            // ลบ localStorage key เก่าของ journal นี้ทิ้ง (migrate)
+            try{ localStorage.removeItem('tj_noteday_'+(j.portfolio||'default')+'_'+j.date); }catch(e){}
           }
         });
       }
@@ -3902,10 +3923,14 @@ if(!S.portfolios['default'] && _initDeleted.indexOf('default')<0 && _existingPor
   });
 }
 function persist(){
-  lsSet('tj_s',JSON.stringify(S.sessions));
-  lsSet('tj_t',JSON.stringify(S.trades));
+  // ถ้ามี Sheet → trades/sessions อยู่ใน S (memory) + Sheet เท่านั้น ไม่เขียน localStorage
+  // ถ้าไม่มี Sheet → localStorage เป็น fallback ตามเดิม
   lsSet('tj_ports',JSON.stringify(S.portfolios));
   lsSet('tj_curport',S.currentPortfolio);
+  if(!S.scriptUrl){
+    try{ lsSet('tj_s',JSON.stringify(S.sessions)); }catch(e){}
+    try{ lsSet('tj_t',JSON.stringify(S.trades)); }catch(e){}
+  }
 }
 
 // ── PORTFOLIO SYSTEM ──
@@ -3913,28 +3938,60 @@ function getPortfolioKey(dateKey){return S.currentPortfolio+'__'+dateKey;}
 // NOTE: getCurrentSessions ไม่ได้ใช้งาน — S.sessions เป็น port-scoped อยู่แล้วผ่าน persistPort/getPortSessions
 function getCurrentSessions(){return S.sessions;}
 // Portfolio data are stored with prefix: port_ID_sessions / port_ID_trades
-function getPortSessions(){var k='port_'+S.currentPortfolio+'_s';try{return JSON.parse(localStorage.getItem(k)||'{}');}catch(e){return {};}}
+function getPortSessions(){
+  // ถ้ามี Sheet และ S.sessions มีข้อมูลแล้ว → ใช้ memory โดยตรง
+  if(S.scriptUrl && S.sessions && Object.keys(S.sessions).length) return S.sessions;
+  var k='port_'+S.currentPortfolio+'_s';
+  try{return JSON.parse(localStorage.getItem(k)||'{}');}catch(e){return {};}
+}
 function getPortTrades(){
+  // ถ้ามี Sheet และ S.trades มีข้อมูลแล้ว → ใช้ memory โดยตรง
+  if(S.scriptUrl && S.trades && Object.keys(S.trades).length) return S.trades;
   var k='port_'+S.currentPortfolio+'_t';
   try{
     var raw=JSON.parse(lsGet(k)||'{}');
-    // dedup ทุกวันก่อน return
     Object.keys(raw).forEach(function(date){ raw[date]=_dedupTrades(raw[date]||[]); });
     return raw;
   }catch(e){return {};}
 }
 function persistPort(){
-  lsSet('port_'+S.currentPortfolio+'_s',JSON.stringify(S.sessions));
-  lsSet('port_'+S.currentPortfolio+'_t',JSON.stringify(S.trades));
+  // memory-first: S.sessions / S.trades เป็น source of truth เสมอ
+  // localStorage เป็นแค่ offline cache เมื่อไม่มี Sheet
   lsSet('tj_ports',JSON.stringify(S.portfolios));
   lsSet('tj_curport',S.currentPortfolio);
+  if(!S.scriptUrl){
+    // ไม่มี Sheet → เขียน localStorage ตามเดิม (offline mode)
+    try{ lsSet('port_'+S.currentPortfolio+'_s',JSON.stringify(S.sessions)); }catch(e){}
+    try{ lsSet('port_'+S.currentPortfolio+'_t',JSON.stringify(S.trades)); }catch(e){}
+  } else {
+    // มี Sheet → memory คือ source of truth
+    // เขียน localStorage เฉพาะ metadata ขนาดเล็ก เพื่อให้ resume session ได้เมื่อ refresh
+    try{
+      var meta={lastSync:Date.now(),portfolio:S.currentPortfolio,
+                tradeCount:Object.values(S.trades).reduce(function(s,a){return s+a.length;},0),
+                sessionDates:Object.keys(S.sessions).slice(-30)}; // เก็บแค่ 30 วันล่าสุด
+      lsSet('port_'+S.currentPortfolio+'_meta',JSON.stringify(meta));
+    }catch(e){}
+  }
 }
 function switchPortfolio(id){
   if(!S.portfolios[id]) return;
   S.currentPortfolio=id;
-  S.sessions=getPortSessions();
-  S.trades=getPortTrades();
-  // update UI
+  if(S.scriptUrl){
+    // มี Sheet → โหลดจาก localStorage cache ที่ sync มา (port_*_t/s) หรือ syncFromSheet
+    var cachedT=lsGet('port_'+id+'_t'); var cachedS=lsGet('port_'+id+'_s');
+    if(cachedT||cachedS){
+      S.trades  = cachedT?JSON.parse(cachedT):{};
+      S.sessions= cachedS?JSON.parse(cachedS):{};
+    } else {
+      // ไม่มี cache → sync ใหม่
+      S.trades={}; S.sessions={};
+      syncFromSheet(null);
+    }
+  } else {
+    S.sessions=getPortSessions();
+    S.trades=getPortTrades();
+  }
   document.querySelectorAll('.port-tab').forEach(function(t){t.classList.toggle('active',t.dataset.portId===id);});
   updateStats();renderCal();updateRecent();renderTodayOrders();renderPortfolioBar();
   lsSet('tj_curport',id);
@@ -4060,7 +4117,7 @@ function confirmEditPortfolio(id,btn){
   lsSet('tj_ports',JSON.stringify(S.portfolios));
   var saveMsg='✅ อัปเดตพอร์ตแล้ว';
   if(S.scriptUrl){
-    sendSheet('saveSettings',{key:'portfolio_edit',value:'id='+id+' name='+name+' balance='+(S.portfolios[id].balance||0)+' fund:'+(S.portfolios[id].fund||'-')});
+    sendSheet('saveSettings',{key:'portfolio_edit',value:'id='+id+' name='+name+' balance='+(S.portfolios[id].balance||0)+' fund='+(S.portfolios[id].fund||'-')}); // BUG1-FIX: fund: → fund=
     saveMsg='✅ อัปเดต + บันทึกลง Sheet แล้ว';
   }
   showToast(saveMsg,'success');
@@ -5944,8 +6001,9 @@ function deleteDay(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
     delete S.sessions[S.mKey];delete S.trades[S.mKey];
     // ── reset Emotional State slider กลับเป็น default ──
     mEmoSetByIdx(4); setEmoByIdx(4); // Calm
-    // ── ลบ Note of Day ออกจาก localStorage ด้วย ──
+    // ── ลบ Note of Day ออกจาก localStorage และ memory ──
     lsRem('tj_noteday_'+S.currentPortfolio+'_'+S.mKey);
+    if(S.journal) delete S.journal[(S.currentPortfolio||'default')+'_'+S.mKey];
     var ndEditor=document.getElementById('noteDayEditor');
     if(ndEditor) ndEditor.innerHTML='';
     var ndLbl=document.getElementById('ndAutoSaveLabel');
@@ -6547,7 +6605,7 @@ function _flushSendQueue(){
     lsRem('tj_send_queue');
     return;
   }
-  fetch(S.scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(item.payload)})
+  fetch(S.scriptUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(item.payload)}) // BUG3 FIX: CORS
     .then(function(){
       _sendQueue.shift();
       if(_sendQueue.length) _flushSendQueue();
@@ -6562,16 +6620,24 @@ function _flushSendQueue(){
 }
 function sendSheet(action,data){
   if(!S.scriptUrl)return;
-  var icons={saveTrade:'📊',saveSession:'📝',deleteTrade:'🗑',deleteDay:'🗑',saveAssets:'🗂️',deletePortfolio:'🗑',saveSettings:'⚙️',batchSaveTrades:'📥',saveNoteDay:'📓'};
   var payload=Object.assign({action:action, portfolio:S.currentPortfolio}, data);
   clearTimeout(_sendRetryTimer);
-  fetch(S.scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(function(){
-      // no-cors response is opaque — we can't read status, but no network error = likely ok
+  // BUG2 FIX: ใช้ fetch แบบ CORS ปกติ (ไม่ใช่ no-cors) เพื่อให้อ่าน response status ได้
+  // GAS Web App ที่ deploy แบบ "Anyone" จะ return CORS headers ถูกต้อง
+  fetch(S.scriptUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)})
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json().catch(function(){ return {status:'ok'}; }); // no-content response
+    })
+    .then(function(res){
+      if(res && res.status==='error'){
+        console.warn('[sendSheet] GAS error:',action, res.msg||'');
+        showToast('⚠ Sheet error ('+action+'): '+(res.msg||'unknown'),'error');
+      }
     })
     .catch(function(err){
       showToast('⚠ Sheet offline — บันทึก local แล้ว จะ retry อัตโนมัติ','error');
-      payload._queuedUrl=S.scriptUrl; // เก็บ URL ตอนที่ queue เพื่อตรวจ URL ไม่ตรง
+      payload._queuedUrl=S.scriptUrl;
       _sendQueue.push({payload:payload,action:action,ts:Date.now()});
       try{ lsSet('tj_send_queue',JSON.stringify(_sendQueue)); }catch(e){}
       _sendRetryTimer=setTimeout(_flushSendQueue,15000);
@@ -8124,6 +8190,8 @@ var _ndAutoSaveTimer=null;
 var _ndEmojiOpen=false;
 var _ndEmojiCat=0;
 var _ndSavedRange=null;
+var _ndColorRange=null;
+if(!S.journal) S.journal={};
 
 var ND_EMOJI={
   'ใบหน้า':['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😋','😛','😝','😜','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','🤗','🤔','🤫','🤥','😶','😐','😑','😬','🙄','😯','😲','🥱','😴','😵','🤢','🤮','🤧','😷','🤒','🤕'],
@@ -8138,57 +8206,103 @@ var ND_EMOJI={
 };
 var ND_EMOJI_KEYS=Object.keys(ND_EMOJI);
 
+// ── Key helpers ──────────────────────────────────────────────
+function ndMemKey(){ return (S.currentPortfolio||'default')+'_'+(S.mKey||''); }
 function ndStorageKey(){ return 'tj_noteday_'+S.currentPortfolio+'_'+S.mKey; }
+
+// ── Image compression ────────────────────────────────────────
+function _ndCompressImg(file, cb){
+  var maxW=1200, quality=0.72;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var w=img.width, h=img.height;
+      if(w<=maxW && file.size<200*1024){ cb(ev.target.result); return; }
+      var scale=w>maxW?maxW/w:1;
+      var canvas=document.createElement('canvas');
+      canvas.width=Math.round(w*scale); canvas.height=Math.round(h*scale);
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      cb(canvas.toDataURL('image/jpeg',quality));
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Purge old localStorage notes when full ───────────────────
+function _ndPurgeOldLocalNotes(){
+  try{
+    var keys=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('tj_noteday_')>=0) keys.push(k);
+    }
+    keys.sort();
+    var toDelete=Math.max(1,Math.floor(keys.length/2));
+    for(var j=0;j<toDelete;j++) localStorage.removeItem(keys[j]);
+  }catch(e){}
+}
+
+// ── Write helpers ─────────────────────────────────────────────
+function _ndWriteMemory(html){
+  if(!S.journal) S.journal={};
+  S.journal[ndMemKey()]=html;
+}
+function _ndWriteLocal(html){
+  if(S.scriptUrl) return; // มี Sheet → ไม่เขียน localStorage
+  try{
+    lsSet(ndStorageKey(),html);
+  }catch(e){
+    _ndPurgeOldLocalNotes();
+    try{ lsSet(ndStorageKey(),html); }catch(e2){
+      var tmp=document.createElement('div'); tmp.innerHTML=html;
+      tmp.querySelectorAll('img').forEach(function(img){ img.remove(); });
+      try{ lsSet(ndStorageKey(),tmp.innerHTML+'<p style="color:var(--amber);font-size:10px;">[รูปถูกลบอัตโนมัติ เพราะ storage เต็ม — เชื่อม Sheet เพื่อเก็บรูปได้ไม่จำกัด]</p>'); }catch(e3){}
+    }
+  }
+}
+function _ndWriteSheet(html){
+  if(!S.scriptUrl||!S.mKey) return;
+  var plain=(html.replace(/<[^>]+>/g,'')||'').substring(0,5000);
+  sendSheet('saveNoteDay',{date:S.mKey,portfolio:S.currentPortfolio,noteHTML:html,notePlain:plain});
+}
+
+// ── Read helper ───────────────────────────────────────────────
+function _ndRead(){
+  if(S.journal && S.journal[ndMemKey()]) return S.journal[ndMemKey()];
+  if(!S.scriptUrl){ var ls=lsGet(ndStorageKey()); if(ls) return ls; }
+  return '';
+}
 
 function ndLoadContent(){
   var editor=document.getElementById('noteDayEditor');
   if(!editor) return;
   if(_isReadOnly){
-    // Read-only: load from shared session data instead of localStorage
-    var key=ndStorageKey();
-    var dayData=S.sessions&&S.sessions[key];
-    var html=(dayData&&dayData.noteDay)||'';
+    var html='';
+    if(S.journal) html=S.journal[ndMemKey()]||'';
+    if(!html){ var d=S.sessions&&S.sessions[ndMemKey()]; html=(d&&d.noteDay)||''; }
     editor.innerHTML=html||'<div style="color:var(--text-muted);font-style:italic;font-size:12px;padding:8px 0;">ไม่มี Note of Day สำหรับวันนี้</div>';
-    editor.contentEditable='false';
-    editor.style.cursor='default';
-    editor.style.opacity='0.85';
-    var toolbar=document.getElementById('ndToolbar');
-    if(toolbar) toolbar.style.display='none';
-    var footer=document.getElementById('ndFooter');
-    if(footer) footer.style.display='none';
-    ndBindImgZoom(editor);
-    return;
+    editor.contentEditable='false'; editor.style.cursor='default'; editor.style.opacity='0.85';
+    var toolbar=document.getElementById('ndToolbar'); if(toolbar) toolbar.style.display='none';
+    var footer=document.getElementById('ndFooter'); if(footer) footer.style.display='none';
+    ndBindImgZoom(editor); return;
   }
-
-  var saved = lsGet(ndStorageKey());
-  // BUG FIX: ถ้า localStorage ว่าง ให้ลองดึงจาก Journal Sheet (sync ไว้ใน lsSet แล้ว)
-  // กรณีนี้เกิดเมื่อ user เปิด browser ใหม่หลัง sync
-  if(!saved){
-    var journalKey = 'tj_noteday_'+S.currentPortfolio+'_'+S.mKey;
-    saved = lsGet(journalKey) || '';
-  }
-
-  // BUG FIX: ล้าง <font> tags เก่าที่เกิดจาก execCommand foreColor แบบเดิม
-  // แปลงเป็น <span style="color:..."> แทน เพื่อให้แสดงผลถูกต้องใน browser ใหม่
+  var saved=_ndRead();
   if(saved && saved.indexOf('<font')>=0){
-    var tmp = document.createElement('div');
-    tmp.innerHTML = saved;
+    var tmp=document.createElement('div'); tmp.innerHTML=saved;
     tmp.querySelectorAll('font[color]').forEach(function(f){
-      var sp = document.createElement('span');
-      sp.style.color = f.getAttribute('color');
+      var sp=document.createElement('span'); sp.style.color=f.getAttribute('color');
       while(f.firstChild) sp.appendChild(f.firstChild);
-      f.parentNode.replaceChild(sp, f);
+      f.parentNode.replaceChild(sp,f);
     });
-    saved = tmp.innerHTML;
-    lsSet(ndStorageKey(), saved); // บันทึก cleaned version กลับ
+    saved=tmp.innerHTML;
+    _ndWriteMemory(saved); _ndWriteLocal(saved);
   }
-
-  editor.innerHTML = saved || '';
+  editor.innerHTML=saved||'';
   editor.contentEditable='true';
-  ndBindImgZoom(editor);
-  ndCloseEmoji();
-  var lbl=document.getElementById('ndAutoSaveLabel');
-  if(lbl) lbl.textContent='';
+  ndBindImgZoom(editor); ndCloseEmoji();
+  var lbl=document.getElementById('ndAutoSaveLabel'); if(lbl) lbl.textContent='';
   setTimeout(function(){
     editor.focus();
     try{var r=document.createRange();r.selectNodeContents(editor);r.collapse(false);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}catch(e){}
@@ -8199,14 +8313,12 @@ function ndSave(){
   if(_isReadOnly){showToast('🔒 โหมดดูเท่านั้น — ไม่สามารถแก้ไขได้','error');return;}
   var editor=document.getElementById('noteDayEditor');
   if(!editor) return;
-  lsSet(ndStorageKey(), editor.innerHTML);
+  var html=editor.innerHTML;
+  _ndWriteMemory(html);
+  _ndWriteLocal(html);
+  _ndWriteSheet(html);
   var lbl=document.getElementById('ndAutoSaveLabel');
   if(lbl){ var now=new Date(); lbl.textContent='บันทึกแล้ว '+pad(now.getHours())+':'+pad(now.getMinutes()); }
-  // sync to Google Sheet Journal
-  if(S.scriptUrl && S.mKey){
-    var plain=editor.innerText||editor.textContent||'';
-    sendSheet('saveNoteDay',{date:S.mKey,noteHTML:editor.innerHTML,notePlain:plain.substring(0,5000)});
-  }
   showToast('📓 บันทึก Note of Day แล้ว'+(S.scriptUrl?' → Sheet':''),'success');
 }
 
@@ -8216,7 +8328,10 @@ function ndAutoSave(){
   _ndAutoSaveTimer=setTimeout(function(){
     var editor=document.getElementById('noteDayEditor');
     if(!editor) return;
-    lsSet(ndStorageKey(), editor.innerHTML);
+    var html=editor.innerHTML;
+    _ndWriteMemory(html);
+    _ndWriteLocal(html);
+    _ndWriteSheet(html);
     var lbl=document.getElementById('ndAutoSaveLabel');
     if(lbl){ var now=new Date(); lbl.textContent='บันทึกอัตโนมัติ '+pad(now.getHours())+':'+pad(now.getMinutes()); }
   },3000);
@@ -8227,9 +8342,10 @@ function ndClear(){
   showConfirm('ล้าง Note of Day วันนี้ทั้งหมดใช่ไหม?', function(){
     var editor=document.getElementById('noteDayEditor');
     if(editor){ editor.innerHTML=''; editor.focus(); }
+    if(S.journal) delete S.journal[ndMemKey()];
     lsRem(ndStorageKey());
-    var lbl=document.getElementById('ndAutoSaveLabel');
-    if(lbl) lbl.textContent='';
+    _ndWriteSheet('');
+    var lbl=document.getElementById('ndAutoSaveLabel'); if(lbl) lbl.textContent='';
     showToast('🗑 ล้าง Note of Day แล้ว','success');
   });
 }
@@ -8416,9 +8532,8 @@ function ndInsertImgFile(e){
   e.target.value='';
 }
 function ndInsertImgFromFile(file){
-  var r=new FileReader();
-  r.onload=function(ev){ ndInsertImgSrc(ev.target.result); };
-  r.readAsDataURL(file);
+  // บีบรูปก่อนแทรก → ลดขนาด ~70-85%
+  _ndCompressImg(file, function(src){ ndInsertImgSrc(src); });
 }
 function ndInsertImgSrc(src){
   var editor=document.getElementById('noteDayEditor');
@@ -8506,33 +8621,40 @@ function dtDeduplicateAll(){
   DT.trades=cleaned;
   dtSave();
   dtRender();
-  if(S.scriptUrl){
-    fetch(S.scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'deduplicateDataTrades',portfolio:S.currentPortfolio})})
-      .catch(function(){});
-  }
-  showToast(removed>0?'🧹 ลบ '+removed+' รายการซ้ำแล้ว':'✅ ไม่มีรายการซ้ำ',removed>0?'success':'success');
+  // Bug 6 FIX: ใช้ sendSheet() แทน fetch โดยตรง → มี retry queue + response handling
+  if(S.scriptUrl) sendSheet('deduplicateDataTrades',{portfolio:S.currentPortfolio});
+  showToast(removed>0?'🧹 ลบ '+removed+' รายการซ้ำแล้ว':'✅ ไม่มีรายการซ้ำ','success');
 }
 var DT_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var DT_SESSION_OPTS=['Sydney','Tokyo','London','New York'];
 
 function dtLoad(){
+  // ถ้ามี Sheet → DT.trades ใน memory คือ source of truth (โหลดจาก syncFromSheet แล้ว)
+  // ถ้าไม่มี Sheet → อ่าน localStorage ตามเดิม
+  if(S.scriptUrl && DT.trades && DT.trades.length) return; // memory มีข้อมูลแล้ว → ข้าม
   try{
     var raw=lsGet('dt_trades');
     DT.trades=raw?JSON.parse(raw):[];
     if(!Array.isArray(DT.trades)) DT.trades=[];
-    // ── Migrate: normalize result ค่าที่ไม่ถูกต้อง ──
     var needSave=false;
     DT.trades.forEach(function(t){
       if(t.result==='m'||t.result==='M') { t.result='Miss'; needSave=true; }
     });
-    if(needSave) lsSet('dt_trades',JSON.stringify(DT.trades));
+    if(needSave && !S.scriptUrl) lsSet('dt_trades',JSON.stringify(DT.trades));
   }catch(e){ DT.trades=DT.trades||[]; }
 }
 function dtSave(){
-  // BUG6 FIX: บันทึก timestamp ทุกครั้งที่ save — ใช้ตรวจ drift กับ Sheet ได้
-  lsSet('dt_trades', JSON.stringify(DT.trades));
   lsSet('dt_saved_at', String(Date.now()));
+  if(S.scriptUrl) return; // มี Sheet → DT.trades อยู่ใน memory + Sheet เท่านั้น
+  // ไม่มี Sheet → localStorage fallback
+  try{ lsSet('dt_trades', JSON.stringify(DT.trades)); }catch(e){
+    // เต็ม → strip รูปแล้ว retry
+    var stripped=DT.trades.map(function(t){
+      if(!t.imgB64) return t;
+      var copy=Object.assign({},t); delete copy.imgB64; return copy;
+    });
+    try{ lsSet('dt_trades',JSON.stringify(stripped)); }catch(e2){}
+  }
 }
 
 // ── Contract point values for auto-calc ──
