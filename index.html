@@ -2132,11 +2132,7 @@ function _recalc(date,portfolio){
       return da-db;
     });
   }
-  var pnls=trades.map(function(r){
-    var iPnl2=ts&amp;&amp;ts.getLastRow()&gt;1?ts.getDataRange().getValues()[0].indexOf(&#x27;PnL($)&#x27;):-1;
-    if(iPnl2&lt;0) iPnl2=11;
-    return parseFloat(r[iPnl2])||0;
-  });
+    var pnls=trades.map(function(r){ return parseFloat(r[iPnl])||0; });
   var net=pnls.reduce(function(s,v){return s+v;},0);
   var gp=pnls.filter(function(v){return v&gt;0;}).reduce(function(s,v){return s+v;},0);
   var gl=Math.abs(pnls.filter(function(v){return v&lt;0;}).reduce(function(s,v){return s+v;},0));
@@ -3848,8 +3844,8 @@ function _setCalLoadingState(loading){
 function init(){
   _authInit(); // ── ตรวจ session / แสดง login overlay ──
   try{
-    S.sessions=JSON.parse(lsGet('tj_s')||'{}');
-    S.trades=JSON.parse(lsGet('tj_t')||'{}');
+    // S.sessions / S.trades จะถูก load โดย getPortSessions/getPortTrades ด้านล่าง
+    // ไม่ load tj_s / tj_t เพราะเป็น legacy key ที่ไม่ได้ใช้แล้ว
     // Priority: session.scriptUrl > localStorage tj_url
     var localUrl = lsGet('tj_url') || '';
     var sessionUrl = (_authSession && _authSession.scriptUrl) ? _authSession.scriptUrl : '';
@@ -3978,16 +3974,9 @@ function switchPortfolio(id){
   if(!S.portfolios[id]) return;
   S.currentPortfolio=id;
   if(S.scriptUrl){
-    // มี Sheet → โหลดจาก localStorage cache ที่ sync มา (port_*_t/s) หรือ syncFromSheet
-    var cachedT=lsGet('port_'+id+'_t'); var cachedS=lsGet('port_'+id+'_s');
-    if(cachedT||cachedS){
-      S.trades  = cachedT?JSON.parse(cachedT):{};
-      S.sessions= cachedS?JSON.parse(cachedS):{};
-    } else {
-      // ไม่มี cache → sync ใหม่
-      S.trades={}; S.sessions={};
-      syncFromSheet(null);
-    }
+    // มี Sheet → clear แล้ว sync ใหม่จาก Sheet เสมอ (ไม่อ่าน localStorage ที่อาจว่าง)
+    S.trades={}; S.sessions={};
+    syncFromSheet(null);
   } else {
     S.sessions=getPortSessions();
     S.trades=getPortTrades();
@@ -4007,7 +3996,8 @@ function renderPortfolioBar(){
     var isActive=id===S.currentPortfolio;
     var portTrades={};
     try{
-      var _pt=JSON.parse(lsGet('port_'+id+'_t')||'{}');
+      // ใช้ S.trades สำหรับ portfolio ปัจจุบัน, localStorage สำหรับ portfolio อื่น
+      var _pt=isActive ? S.trades : JSON.parse(lsGet('port_'+id+'_t')||'{}');
       portTrades=(_pt&&typeof _pt==='object'&&!Array.isArray(_pt))?_pt:{};
     }catch(e){}
     var bal=Object.values(portTrades).reduce(function(sum,arr){return sum+(Array.isArray(arr)?arr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0):0);},0);
@@ -5059,6 +5049,7 @@ function _loadSidebarDay(k){
 }
 
 // Auto-save Trend/Confirm/Strategy/Session changes immediately without requiring "Save Day"
+var _autoSaveSidebarTimer=null;
 function autoSaveSidebarField(){
   if(_isReadOnly) return;
   var k = _sidebarDateKey();
@@ -5066,15 +5057,21 @@ function autoSaveSidebarField(){
   existing.emotion = S.emo;
   existing.trend = document.getElementById('rTrend').value;
   existing.confirm = document.getElementById('rConfirm').value;
-  // Save session tags
   var sess = getSidebarActiveSessions();
   existing.sessions = sess.join(', ');
-  // Save strategies
   var strats = [];
   document.querySelectorAll('#stratRow .tag.active').forEach(function(t){strats.push(t.textContent.trim());});
   existing.strategies = strats.join(', ');
   S.sessions[k] = existing;
   persistPort();
+  // BUG2 FIX: debounced sync ไป Sheet (2 วิ) เพื่อไม่ให้ข้อมูลหายตอน refresh
+  clearTimeout(_autoSaveSidebarTimer);
+  _autoSaveSidebarTimer=setTimeout(function(){
+    if(S.scriptUrl){
+      var _p=Object.assign({date:k},S.sessions[k]||{});
+      sendSheet('saveSession',_p);
+    }
+  },2000);
 }
 
 function saveEntry(){if(_isReadOnly){showToast('🔒 โหมดดูเท่านั้น — ไม่สามารถแก้ไขได้','error');return;}
@@ -5083,7 +5080,7 @@ function saveEntry(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
   sess=getSidebarActiveSessions();
   document.querySelectorAll('#stratRow .tag.active').forEach(function(t){strats.push(t.textContent);});
   var tr=S.trades[k]||[];
-  var pnl=tr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);
+  var pnl=+tr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0).toFixed(2); // BUG5 FIX: float precision
   var wins=tr.filter(function(t){return parseFloat(t.pnl)>0;}).length;
   var newNote=document.getElementById('rNotes').value.trim();
   // Load existing session to preserve notesHistory
@@ -5111,10 +5108,14 @@ function saveEntry(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
     existing.notesHistory.push(newEntry);
     if(existing.notesHistory.length>20) existing.notesHistory.shift();
   }
-  var sessObj={emotion:S.emo,trend:document.getElementById('rTrend').value,confirm:document.getElementById('rConfirm').value,sessions:sess.join(', '),strategies:strats.join(', '),notes:newNote,netPnl:pnl,trades:tr.length,wins:wins,notesHistory:existing.notesHistory};
+  var losses=tr.filter(function(t){return parseFloat(t.pnl)<0;}).length;
+  var wr=tr.length?Math.round(wins/tr.length*100):0;
+  var sessObj={emotion:S.emo,trend:document.getElementById('rTrend').value,confirm:document.getElementById('rConfirm').value,sessions:sess.join(', '),strategies:strats.join(', '),notes:newNote,netPnl:pnl,trades:tr.length,wins:wins,losses:losses,winRate:wr,notesHistory:existing.notesHistory,portfolio:S.currentPortfolio};
   S.sessions[k]=sessObj;
   persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();
-  if(S.scriptUrl) sendSheet('saveSession',Object.assign({date:k},sessObj));
+  if(S.scriptUrl){
+    sendSheet('saveSession',Object.assign({date:k},sessObj));
+  }
   showToast('✅ บันทึกแล้ว'+(S.scriptUrl?' → Sheet':' (local)'),'success');
   // refresh Comment history ถ้า modal วันนั้นเปิดอยู่
   if(S.mKey===k) renderCommentHistory(k);
@@ -5462,7 +5463,9 @@ function addTrade(){if(_isReadOnly){showToast('🔒 โหมดดูเท่�
     emotion:parseInt(document.getElementById('oEmoSlider').value)||5,
     discipline:parseInt(document.getElementById('oDiscSlider').value)||5,
     fiboLevel:document.getElementById('oFiboLevel').value||'',
-    id:_uuid()
+    id:_uuid(),
+    portfolio:S.currentPortfolio,
+    date:S.mKey
   };
   showTradeConfirm(trade, function(){
     S.mTrades.push(trade);
@@ -5662,7 +5665,7 @@ function renderTT(){
     var resBadge=t.result==='Win'?'<span style="color:var(--green);font-size:10px;font-weight:600;">✓W</span>':t.result==='Loss'?'<span style="color:var(--red);font-size:10px;font-weight:600;">✗L</span>':'<span style="color:var(--amber);font-size:10px;">BE</span>';
     var imgCell=t.imgLink?'<span onclick="window.open(\''+t.imgLink+'\',\'_blank\')" style="font-size:12px;cursor:pointer;">🖼️</span>':'-';
     var sessStr=t.sessions?(t.sessions.split(',').map(function(s){return s.trim();}).filter(Boolean).join(', ')):'';
-    return '<tr><td style="font-family:var(--font-mono);font-weight:500;white-space:nowrap;">'+t.asset+'</td><td><span class="side-badge '+t.side.toLowerCase()+'">'+t.side+'</span></td><td>'+t.lots+'</td><td style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);white-space:nowrap;line-height:1.4;">'+_fmtEntryTime(t)+'</td><td style="font-size:10px;color:var(--text-secondary);white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;" title="'+sessStr+'">'+sessStr+'</td><td style="font-family:var(--font-mono)">'+t.entry+'</td><td style="font-family:var(--font-mono)">'+(t.close||'-')+'</td><td style="font-size:10px;font-family:var(--font-mono);color:var(--purple);">'+(t.fiboLevel||'-')+'</td><td class="'+(p>=0?'pnl-pos':'pnl-neg')+'">'+(p>=0?'+':'')+'$'+Math.abs(p).toFixed(2)+'</td><td>'+resBadge+'</td><td style="font-size:10px;color:var(--text-muted);white-space:nowrap;">'+(t.timeInPos||'-')+'</td><td style="font-size:10px;color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;" title="'+t.note+'">'+t.note+'</td><td>'+imgCell+'</td><td style="white-space:nowrap;"><button class="btn-del" onclick="editTr('+i+')" title="แก้ไข" style="color:var(--accent);margin-right:2px;">✎</button><button class="btn-del" onclick="moveTrDate('+i+')" title="ย้ายไปวันอื่น" style="color:var(--amber);margin-right:2px;">📅</button><button class="btn-del" onclick="delTr('+i+')">✕</button></td></tr>';
+    return '<tr><td style="font-family:var(--font-mono);font-weight:500;white-space:nowrap;">'+escHtml(t.asset||'')+'</td><td><span class="side-badge '+t.side.toLowerCase()+'">'+t.side+'</span></td><td>'+t.lots+'</td><td style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);white-space:nowrap;line-height:1.4;">'+_fmtEntryTime(t)+'</td><td style="font-size:10px;color:var(--text-secondary);white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;" title="'+sessStr+'">'+sessStr+'</td><td style="font-family:var(--font-mono)">'+t.entry+'</td><td style="font-family:var(--font-mono)">'+(t.close||'-')+'</td><td style="font-size:10px;font-family:var(--font-mono);color:var(--purple);">'+(t.fiboLevel||'-')+'</td><td class="'+(p>=0?'pnl-pos':'pnl-neg')+'">'+(p>=0?'+':'')+'$'+Math.abs(p).toFixed(2)+'</td><td>'+resBadge+'</td><td style="font-size:10px;color:var(--text-muted);white-space:nowrap;">'+(t.timeInPos||'-')+'</td><td style="font-size:10px;color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;" title="'+escHtml(t.note||'')+'">'+escHtml(t.note||'')+'</td><td>'+imgCell+'</td><td style="white-space:nowrap;"><button class="btn-del" onclick="editTr('+i+')" title="แก้ไข" style="color:var(--accent);margin-right:2px;">✎</button><button class="btn-del" onclick="moveTrDate('+i+')" title="ย้ายไปวันอื่น" style="color:var(--amber);margin-right:2px;">📅</button><button class="btn-del" onclick="delTr('+i+')">✕</button></td></tr>';
   }).join('');
 }
 function delTr(i){if(_isReadOnly){showToast('🔒 โหมดดูเท่านั้น — ไม่สามารถแก้ไขได้','error');return;}
@@ -5729,10 +5732,18 @@ function confirmMoveDate(i){
   // Update sessions PnL for both days
   function recalcSession(k){
     var tr=S.trades[k]||[];
-    var pnl=tr.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);
-    var wins=tr.filter(function(t){return parseFloat(t.pnl)>0;}).length;
+    var pnls=tr.map(function(t){return parseFloat(t.pnl)||0;});
+    var net=pnls.reduce(function(s,v){return s+v;},0);
+    var wins=pnls.filter(function(v){return v>0;}).length;
+    var losses=pnls.filter(function(v){return v<0;}).length;
+    var wr=tr.length?Math.round(wins/tr.length*100):0;
+    // BUG4 FIX: คำนวณ stats ครบ ไม่ใช่แค่ netPnl/trades/wins
     if(!S.sessions[k]) S.sessions[k]={};
-    S.sessions[k].netPnl=pnl;S.sessions[k].trades=tr.length;S.sessions[k].wins=wins;
+    S.sessions[k].netPnl=+net.toFixed(2);
+    S.sessions[k].trades=tr.length;
+    S.sessions[k].wins=wins;
+    S.sessions[k].losses=losses;
+    S.sessions[k].winRate=wr;
   }
   recalcSession(oldKey);
   recalcSession(newDate);
@@ -5839,6 +5850,7 @@ function updateTrade(){if(_isReadOnly){showToast('🔒 โหมดดูเท�
     fiboLevel:document.getElementById('oFiboLevel').value||'',
     id:S.mTrades[i].id||_uuid()
   };
+  trade.portfolio=S.currentPortfolio; // ensure portfolio is always set
   S.mTrades[i]=trade;
   S._editIdx=-1;
   renderTT();
@@ -5852,7 +5864,9 @@ function updateTrade(){if(_isReadOnly){showToast('🔒 โหมดดูเท�
   showToast('✅ อัปเดตออเดอร์แล้ว','success');
 }
 function saveDayM(){if(_isReadOnly){showToast('🔒 โหมดดูเท่านั้น — ไม่สามารถแก้ไขได้','error');return;}
-  S.trades[S.mKey]=S.mTrades;var se=S.sessions[S.mKey]||{};
+  // BUG3 FIX: ใช้ S.trades[S.mKey] โดยตรง ไม่ใช่ S.mTrades ซึ่งอาจ stale ถ้า popup เปิดจากวันอื่น
+  var dayTrades=S.trades[S.mKey]||[];
+  var se=S.sessions[S.mKey]||{};
   var newNote=document.getElementById('dComment').value.trim();
   var curEmo=EMO_LIST[_mEmoIdx]||'';
   if(!se.notesHistory) se.notesHistory=[];
@@ -5875,9 +5889,12 @@ function saveDayM(){if(_isReadOnly){showToast('🔒 โหมดดูเท่�
   }
   se.notes=newNote;
   se.emotion=curEmo||se.emotion||'';
-  var pnl=S.mTrades.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0);
-  var wins=S.mTrades.filter(function(t){return parseFloat(t.pnl)>0;}).length;
-  se.netPnl=pnl;se.trades=S.mTrades.length;se.wins=wins;S.sessions[S.mKey]=se;
+  var pnl=+dayTrades.reduce(function(s,t){return s+(parseFloat(t.pnl)||0);},0).toFixed(2);
+  var wins=dayTrades.filter(function(t){return parseFloat(t.pnl)>0;}).length;
+  var losses=dayTrades.filter(function(t){return parseFloat(t.pnl)<0;}).length;
+  var wr=dayTrades.length?Math.round(wins/dayTrades.length*100):0;
+  se.netPnl=pnl;se.trades=dayTrades.length;se.wins=wins;se.losses=losses;se.winRate=wr;
+  S.sessions[S.mKey]=se;
   persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();
   renderCommentHistory(S.mKey);
   if(S.scriptUrl) sendSheet('saveSession',Object.assign({date:S.mKey},se));
@@ -5888,27 +5905,27 @@ function renderCommentHistory(dateKey){
   var list=document.getElementById('commentHistoryList');
   if(!wrap||!list) return;
 
-  // ── หา notesHistory จากทุก source ──
+  // ── หา notesHistory — memory (S.sessions) เป็น source of truth ──
   var hist=[];
 
-  // 1. ลอง localStorage โดยตรงก่อนเสมอ (source of truth)
-  try{
-    var raw=lsGet('port_'+S.currentPortfolio+'_s');
-    if(raw){
-      var allSess=JSON.parse(raw);
-      var ls=allSess[dateKey]||{};
-      if(ls.notesHistory&&ls.notesHistory.length) hist=ls.notesHistory;
-    }
-  }catch(e){}
+  // 1. S.sessions ใน memory ก่อนเสมอ (memory-first architecture)
+  var se=S.sessions[dateKey]||{};
+  if(se.notesHistory&&se.notesHistory.length) hist=se.notesHistory;
 
-  // 2. fallback S.sessions ถ้า localStorage ไม่มี
-  if(!hist.length){
-    var se=S.sessions[dateKey]||{};
-    hist=se.notesHistory||[];
+  // 2. fallback localStorage เฉพาะ offline mode (ไม่มี Sheet)
+  if(!hist.length && !S.scriptUrl){
+    try{
+      var raw=lsGet('port_'+S.currentPortfolio+'_s');
+      if(raw){
+        var allSess=JSON.parse(raw);
+        var ls=allSess[dateKey]||{};
+        if(ls.notesHistory&&ls.notesHistory.length) hist=ls.notesHistory;
+      }
+    }catch(e){}
   }
 
-  // 3. sync กลับเข้า S.sessions ให้ consistent
-  if(hist.length){
+  // 3. sync กลับเข้า S.sessions ถ้าเอามาจาก localStorage
+  if(hist.length && !se.notesHistory){
     if(!S.sessions[dateKey]) S.sessions[dateKey]={};
     S.sessions[dateKey].notesHistory=hist;
   }
@@ -6016,7 +6033,11 @@ function deleteDay(){if(_isReadOnly){showToast('🔒 โหมดดูเท่
       lsSet(tbKey,JSON.stringify(tb));
     }catch(e){}
     persistPort();updateStats();renderCal();updateRecent();renderTodayOrders();closeM('mDay');
-    if(S.scriptUrl) sendSheet('deleteDay',{date:S.mKey,portfolio:S.currentPortfolio});
+    if(S.scriptUrl){
+      sendSheet('deleteDay',{date:S.mKey,portfolio:S.currentPortfolio});
+      // ลบ Note of Day ใน Sheet ด้วย (บันทึก noteHTML ว่าง)
+      sendSheet('saveNoteDay',{date:S.mKey,portfolio:S.currentPortfolio,noteHTML:'',notePlain:''});
+    }
     showToast('🗑 ลบแล้ว','success');
   });
 }
