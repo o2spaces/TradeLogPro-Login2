@@ -2362,7 +2362,26 @@ function cleanDuplicates(){
   return {status:&#x27;ok&#x27;,report:report};
 }
 
+// ── Rename header cells ที่ต้อง migrate (เปลี่ยนชื่อ ไม่ใช่เพิ่มใหม่) ──
+function _migrateHeaders(sh, renames){
+  var lastCol=sh.getLastColumn();
+  if(lastCol&lt;1) return;
+  var headers=sh.getRange(1,1,1,lastCol).getValues()[0];
+  var changed=false;
+  headers.forEach(function(h,i){
+    if(renames[h]){
+      sh.getRange(1,i+1).setValue(renames[h]);
+      changed=true;
+    }
+  });
+  if(changed) try{sh.autoResizeColumns(1,lastCol);}catch(e){}
+}
 function setupSheets(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  // ── Step 1: Migrate header ชื่อเก่าก่อน _sheet() เพิ่มของใหม่ ──
+  var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
+  if(dtSh) _migrateHeaders(dtSh,{&#x27;Duration&#x27;:&#x27;TimeInPos&#x27;});
+  // ── Step 2: สร้าง/เพิ่ม column ที่ขาดทุก Sheet ──
   _sheet(SHEET.TRADES,HDR.TRADES);
   _sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   _sheet(SHEET.SESSIONS,HDR.SESSIONS);
@@ -2371,12 +2390,11 @@ function setupSheets(){
   _sheet(SHEET.JOURNAL,HDR.JOURNAL);
   _sheet(SHEET.LOG,HDR.LOG);
   _sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
-  var ss=SpreadsheetApp.getActiveSpreadsheet();
   var def=ss.getSheetByName(&#x27;Sheet1&#x27;);
   if(def&amp;&amp;ss.getSheets().length&gt;1) ss.deleteSheet(def);
   // แสดง alert เฉพาะเมื่อรันจาก Apps Script UI (ไม่ใช่จาก API call)
   try{
-    SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ&#x27;);
+    SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ Migration: Duration → TimeInPos + เพิ่ม SetupDuration อัตโนมัติ&#x27;);
   }catch(e){ /* เรียกผ่าน API — ไม่มี UI ไม่ต้อง alert */ }
 }
 function onOpen(){
