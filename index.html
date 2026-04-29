@@ -1537,7 +1537,7 @@ var HDR={
     &#x27;Session&#x27;,&#x27;Asset&#x27;,&#x27;Side&#x27;,
     &#x27;Entry&#x27;,&#x27;Close&#x27;,&#x27;TP&#x27;,&#x27;SL&#x27;,&#x27;FiboLevel&#x27;,
     &#x27;PnL($)&#x27;,&#x27;Fees($)&#x27;,&#x27;Commission($)&#x27;,&#x27;Result&#x27;,&#x27;Risk&#x27;,&#x27;MaxRR&#x27;,&#x27;Lots&#x27;,
-    &#x27;EntryTime&#x27;,&#x27;Duration&#x27;,&#x27;SetupDuration&#x27;,&#x27;TimeInPos&#x27;,
+    &#x27;EntryTime&#x27;,&#x27;SetupDuration&#x27;,&#x27;TimeInPos&#x27;,
     &#x27;SetupClass&#x27;,&#x27;Candle&#x27;,&#x27;Code&#x27;,&#x27;Mode&#x27;,&#x27;TF&#x27;,
     &#x27;ZoneMit&#x27;,&#x27;Zone&#x27;,&#x27;Confirm&#x27;,
     &#x27;Emotion&#x27;,&#x27;Discipline&#x27;,&#x27;Note&#x27;,&#x27;ImageLink&#x27;,&#x27;UpdatedAt&#x27;
@@ -1568,6 +1568,14 @@ function doGet(e){
   if(p&amp;&amp;p.action===&#x27;cleanDuplicates&#x27;)   return _json(cleanDuplicates());
   if(p&amp;&amp;p.action===&#x27;clearAllDataTrades&#x27;)  return _json(clearAllDataTrades(p));
   if(p&amp;&amp;p.action===&#x27;deduplicateDataTrades&#x27;) return _json(deduplicateDataTrades(p));
+  if(p&amp;&amp;p.action===&#x27;setupSheets&#x27;){
+    try{
+      setupSheets();
+      return _json({status:&#x27;ok&#x27;,msg:&#x27;setupSheets สำเร็จ — Headers พร้อมแล้ว&#x27;});
+    }catch(err){
+      return _json({status:&#x27;error&#x27;,msg:String(err)});
+    }
+  }
   return _json({status:&#x27;ready&#x27;,version:&#x27;5.2&#x27;,time:new Date().toISOString()});
 }
 function loadAll(){
@@ -1859,7 +1867,7 @@ function saveDataTrade(d){
     d.entry||&#x27;&#x27;, d.close||&#x27;&#x27;, d.tp||&#x27;&#x27;, d.sl||&#x27;&#x27;, d.fiboLevel||&#x27;&#x27;,
     parseFloat(d.pnl)||0, parseFloat(d.fees)||0, parseFloat(d.commission)||0,
     d.result||&#x27;&#x27;, d.risk||&#x27;&#x27;, d.maxRR||&#x27;&#x27;, parseFloat(d.lots)||0,
-    d.entryTime||&#x27;&#x27;, d.duration||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||&#x27;&#x27;,
+    d.entryTime||&#x27;&#x27;, d.setupDuration||&#x27;&#x27;, d.timeInPos||d.duration||&#x27;&#x27;,
     d.setupClass||&#x27;&#x27;, d.candle||&#x27;&#x27;, d.code||&#x27;&#x27;, d.mode||&#x27;&#x27;, d.tf||&#x27;&#x27;,
     d.zoneMit||&#x27;&#x27;, d.zone||&#x27;&#x27;, d.confirm||&#x27;&#x27;,
     d.emo||d.emotion||5, d.disc||d.discipline||5,
@@ -1888,7 +1896,7 @@ function batchSaveDataTrades(d){
       t.entry||&#x27;&#x27;, t.close||&#x27;&#x27;, t.tp||&#x27;&#x27;, t.sl||&#x27;&#x27;, t.fiboLevel||&#x27;&#x27;,
       pnl, parseFloat(t.fees)||0, parseFloat(t.commission)||0,
       t.result||&#x27;&#x27;, t.risk||&#x27;&#x27;, t.maxRR||&#x27;&#x27;, t.lots||&#x27;&#x27;,
-      t.entryTime||&#x27;&#x27;, t.duration||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;, t.timeInPos||&#x27;&#x27;,
+      t.entryTime||&#x27;&#x27;, t.setupDuration||&#x27;&#x27;, t.timeInPos||t.duration||&#x27;&#x27;,
       t.setupClass||&#x27;&#x27;, t.candle||&#x27;&#x27;, t.code||&#x27;&#x27;, t.mode||&#x27;&#x27;, t.tf||&#x27;&#x27;,
       t.zoneMit||&#x27;&#x27;, t.zone||&#x27;&#x27;, t.confirm||&#x27;&#x27;,
       t.emo||t.emotion||5, t.disc||t.discipline||5,
@@ -2366,7 +2374,10 @@ function setupSheets(){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var def=ss.getSheetByName(&#x27;Sheet1&#x27;);
   if(def&amp;&amp;ss.getSheets().length&gt;1) ss.deleteSheet(def);
-  SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ&#x27;);
+  // แสดง alert เฉพาะเมื่อรันจาก Apps Script UI (ไม่ใช่จาก API call)
+  try{
+    SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ หมายเหตุ: ถ้า Sheet เดิมมี Header ไม่ครบ ระบบจะเพิ่ม Column ใหม่ให้อัตโนมัติ&#x27;);
+  }catch(e){ /* เรียกผ่าน API — ไม่มี UI ไม่ต้อง alert */ }
 }
 function onOpen(){
   SpreadsheetApp.getUi().createMenu(&#x27;🔧 TradeLog Pro+&#x27;)
@@ -3113,8 +3124,21 @@ async function setupSheetSave(){
   var ov = document.getElementById('setupSheetOverlay');
   if(ov){ ov.classList.remove('open'); }
   setConn(true);
-  showToast('✅ บันทึก Sheet URL แล้ว — กำลัง Sync...', 'success');
-  syncFromSheet();
+  showToast('✅ บันทึก Sheet URL แล้ว — กำลัง Setup Headers & Sync...', 'success');
+
+  // ยิง setupSheets ไป GAS เพื่อ fix/เพิ่ม header ที่ขาดอัตโนมัติ
+  (async function(){
+    try{
+      var setupRes = await fetch(url + '?action=setupSheets', {method:'GET'});
+      var setupData = await setupRes.json();
+      if(setupData && setupData.status === 'ok'){
+        showToast('🗂 Sheet Headers พร้อมแล้ว — กำลัง Sync ข้อมูล...', 'success');
+      }
+    }catch(e){
+      console.warn('setupSheets via API failed (non-critical):', e);
+    }
+    syncFromSheet();
+  })();
 }
 
 function setupSheetSkip(){
@@ -10964,7 +10988,7 @@ function dtExportCSVRows(rows,fname){
   }
   // Header ตรงกับ Import hIdx patterns ทุก field
   var h=['ID','Date','Day','Portfolio','Session','Asset','Side',
-         'Entry Time','Duration','Mode','Code','TF','Class','Candle',
+         'Entry Time','SetupDuration','TimeInPos','Mode','Code','TF','Class','Candle',
          'Mitigated Zone','Zone','Confirm','Fibo Level',
          'Entry','TP','SL','Risk','Lots','P&L($)','Result','MaxRR',
          'Emotion','Discipline','Note','ImageLink','UpdatedAt'];
@@ -10974,7 +10998,7 @@ function dtExportCSVRows(rows,fname){
       esc(t.id||t._id), esc(t.date), esc(t.day),
       esc(t.portfolio||'data'), esc(t.session),
       esc(t.asset), esc(t.side),
-      esc(t.entryTime), esc(t.duration),
+      esc(t.entryTime), esc(t.setupDuration), esc(t.timeInPos||t.duration),
       esc(t.mode), esc(t.code), esc(t.tf),
       esc(t.setupClass), esc(t.candle),
       esc(t.zoneMit), esc(t.zone), esc(t.confirm),
@@ -11445,7 +11469,7 @@ if(document.readyState==='loading'){
     <div style="padding:16px 18px;">
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 13px;line-height:1.7;">
         <b style="color:var(--teal);">Header ที่รองรับ:</b><br>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, Duration, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Day, Session, Asset, Side, EntryTime, SetupDuration, TimeInPos, Mode, Code, TF, SetupClass, Candle, Zone, MitZone, Confirm, Entry, TP, SL, Risk, PnL($), MaxRR, Note, ImageLink</span><br>
         <span style="color:var(--amber);">⚠ แถวแรกต้องเป็น Header &nbsp;|&nbsp; PnL: Win=PnL($), Loss=-Risk</span>
       </div>
 
