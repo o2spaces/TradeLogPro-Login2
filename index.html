@@ -9364,31 +9364,47 @@ function dtParseSheetData(raw){
       if(!isNaN(ev)&&!isNaN(sv)&&sv>ev) side='Short';
     }
 
+    // ── PnL parsing helper: รองรับ comma, +, spaces, () negative ──
+    function cleanNum(s){
+      if(!s) return NaN;
+      var str=String(s).trim();
+      // รูปแบบ negative ด้วย วงเล็บ: (500) → -500
+      var neg=false;
+      if(/^\(.*\)$/.test(str)){ neg=true; str=str.replace(/[()]/g,''); }
+      // ลบ comma, spaces, + นำหน้า
+      str=str.replace(/,/g,'').replace(/\s/g,'').replace(/^\+/,'');
+      var n=parseFloat(str);
+      return neg&&n>0?-n:n;
+    }
+
     // ── Result ──
     var rawResult=(g(row,'result')||'').trim();
     var normResult='BE'; // default
-    if(/^(tp|win|w|\u2713w|\u221aw)$/i.test(rawResult)) normResult='Win';
+    if(/^(tp|win|w|\u2713w|\u221aw)$/i.test(rawResult))      normResult='Win';
     else if(/^(sl|loss|l|x\s*loss|xloss)$/i.test(rawResult)) normResult='Loss';
-    else if(/^(miss|m)$/i.test(rawResult)) normResult='Miss';
-    // BE / empty / unrecognized → BE
+    else if(/^(miss|m)$/i.test(rawResult))                    normResult='Miss';
+    else if(/^be$/i.test(rawResult))                          normResult='BE';
 
-    // ── PnL logic: Win → PnL($), Loss → -Risk ──
+    // ── PnL ──
     var pnlVal=0;
-    var rawPnl=g(row,'pnl');
+    var rawPnl =g(row,'pnl');
     var rawRisk=g(row,'risk');
-    if(normResult==='Win'||normResult==='TP'){
-      pnlVal=rawPnl?parseFloat(rawPnl)||0:0;
-    } else if(normResult==='Loss'||normResult==='SL'){
-      if(rawRisk){
-        var riskNum=parseFloat(rawRisk.replace(/[^0-9.\-]/g,''))||0;
-        pnlVal=riskNum>0?-riskNum:riskNum; // ensure negative
-      } else if(rawPnl){
-        pnlVal=parseFloat(rawPnl)||0;
-      }
-    } else {
-      // BE / Miss / unknown
-      pnlVal=rawPnl?parseFloat(rawPnl)||0:0;
+
+    var parsedPnl  = cleanNum(rawPnl);
+    var parsedRisk = cleanNum(rawRisk);
+
+    if(!isNaN(parsedPnl)){
+      // มี PnL ตรงๆ ในไฟล์ → ใช้เสมอ (ทั้ง Win/Loss/BE)
+      pnlVal = parsedPnl;
+      // ถ้า result=Loss แต่ pnl เป็นบวก → flip เป็นลบ
+      if(normResult==='Loss' && pnlVal > 0) pnlVal = -pnlVal;
+      // ถ้า result=Win แต่ pnl เป็นลบ → flip เป็นบวก
+      if(normResult==='Win'  && pnlVal < 0) pnlVal = -pnlVal;
+    } else if(normResult==='Loss' && !isNaN(parsedRisk)){
+      // ไม่มี PnL แต่มี Risk → Loss = -Risk
+      pnlVal = parsedRisk > 0 ? -parsedRisk : parsedRisk;
     }
+    // ถ้าไม่มีทั้ง PnL และ Risk → pnlVal=0
 
     trades.push({
       _id:'imp_'+dateOnly+'_'+(entryTime||'')+'_'+(entry||'')+'_'+(g(row,'asset')||'')+'_'+i,
@@ -9682,8 +9698,9 @@ function dtRender(){
     var pnl=parseFloat(t.pnl)||0;
     var pnlColor=pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--text-secondary)';
     var pnlStr=(pnl>0?'+':'')+pnl.toFixed(2);
-    var isWin=t.result==='Win'||t.result==='TP'||t.result==='✓W'||t.result==='√W';
-    var isLoss=t.result==='Loss'||t.result==='SL'||t.result==='XL'||t.result==='X Loss';
+    // FIX: ใช้ pnl เป็น source of truth สำหรับสี ไม่ใช่ result string ที่อาจ normalize ผิด
+    var isWin  = pnl > 0;
+    var isLoss = pnl < 0;
     var resultColor=isWin?'var(--green)':isLoss?'var(--red)':'var(--amber)';
     var sideColor=t.side==='Long'?'var(--green)':'var(--red)';
     var imgBtn=t.imgLink?'<span onclick="window.open(\''+t.imgLink+'\',\'_blank\')" style="color:var(--accent);cursor:pointer;font-size:13px;">🖼</span>':'-';
@@ -9691,7 +9708,6 @@ function dtRender(){
     // แปลง date เป็น DD/MM/YYYY
     var displayDate=t.date||'';
     if(displayDate){var dp=displayDate.split('-');if(dp.length===3) displayDate=dp[2]+'/'+dp[1]+'/'+dp[0];}
-    var isWin=t.result==='Win'||t.result==='TP'||t.result==='\u221aW'||t.result==='\u2713W';
     var rowBg=isWin?'rgba(46,204,138,0.09)':'';
     var rowHoverBg=isWin?'rgba(46,204,138,0.16)':'var(--bg-secondary)';
     return '<tr style="border-bottom:1px solid var(--border);background:'+rowBg+';transition:background .1s;" onmouseenter="this.style.background=\''+rowHoverBg+'\';" onmouseleave="this.style.background=\''+rowBg+'\';">'
