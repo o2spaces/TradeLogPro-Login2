@@ -1496,11 +1496,12 @@ if(typeof window.GOOGLE_CLIENT_ID === 'undefined'){
     </div>
     <div class="field-label">Apps Script URL</div>
     <input class="settings-input" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec" oninput="openSheet_onUrlChange()">
-    <div style="margin-top:10px;"><div class="field-label" style="margin-bottom:5px;">📋 Code: <span style="font-size:10px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 7px;margin-left:6px;font-family:var(--font-mono);font-weight:700;">v5.2</span></div>
+    <div style="margin-top:10px;"><div class="field-label" style="margin-bottom:5px;">📋 Code: <span style="font-size:10px;background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 7px;margin-left:6px;font-family:var(--font-mono);font-weight:700;">v5.3</span></div>
     <div class="code-block">/* =========================================
-   TradeLog Pro+ — Google Apps Script v5.2
+   TradeLog Pro+ — Google Apps Script v5.3
    Changelog:
      v5.2 - FiboLevel: เพิ่ม column ใน Trades + DataTrades
+     v5.3 - Duration→TimeInPos | Sessions insert after Confirm | SetupDuration | setupSheets API
           - DataTrades HDR: ใช้ header เดียวกับ Trades (unified schema)
           - Compound key dedup: ID+EntryDateTime+Entry+Side (ป้องกัน float precision)
           - deduplicateDataTrades: action ใหม่สำหรับล้าง duplicate จาก client
@@ -1576,7 +1577,7 @@ function doGet(e){
       return _json({status:&#x27;error&#x27;,msg:String(err)});
     }
   }
-  return _json({status:&#x27;ready&#x27;,version:&#x27;5.2&#x27;,time:new Date().toISOString()});
+  return _json({status:&#x27;ready&#x27;,version:&#x27;5.3&#x27;,time:new Date().toISOString()});
 }
 function loadAll(){
   try{
@@ -2376,12 +2377,32 @@ function _migrateHeaders(sh, renames){
   });
   if(changed) try{sh.autoResizeColumns(1,lastCol);}catch(e){}
 }
+// ── Insert column ในตำแหน่งที่ถูกต้อง (ไม่ใช่แค่ append ท้าย) ──
+function _insertHeaderAt(sh, newHeader, afterHeader){
+  var lastCol=sh.getLastColumn();
+  if(lastCol&lt;1) return;
+  var headers=sh.getRange(1,1,1,lastCol).getValues()[0];
+  // ถ้ามีอยู่แล้วไม่ต้องทำ
+  if(headers.indexOf(newHeader)&gt;=0) return;
+  // หาตำแหน่ง afterHeader
+  var afterIdx=headers.indexOf(afterHeader);
+  var insertCol=(afterIdx&gt;=0 ? afterIdx+2 : lastCol+1); // +2 เพราะ 1-indexed และต้องการ หลัง
+  sh.insertColumnAfter(afterIdx&gt;=0 ? afterIdx+1 : lastCol);
+  sh.getRange(1,insertCol).setValue(newHeader)
+    .setBackground(&#x27;#0d1117&#x27;).setFontColor(&#x27;#4f7aff&#x27;)
+    .setFontWeight(&#x27;bold&#x27;).setFontSize(10).setHorizontalAlignment(&#x27;center&#x27;);
+  try{sh.autoResizeColumn(insertCol);}catch(e){}
+  _log(&#x27;setupSheets&#x27;,&#x27;Inserted column &quot;&#x27;+newHeader+&#x27;&quot; after &quot;&#x27;+afterHeader+&#x27;&quot; at col &#x27;+insertCol,&#x27;&#x27;,&#x27;system&#x27;,&#x27;ok&#x27;);
+}
 function setupSheets(){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  // ── Step 1: Migrate header ชื่อเก่าก่อน _sheet() เพิ่มของใหม่ ──
+  // ── Step 1: Migrate ชื่อ header เก่า ──
   var dtSh=ss.getSheetByName(SHEET.DATA_TRADES);
   if(dtSh) _migrateHeaders(dtSh,{&#x27;Duration&#x27;:&#x27;TimeInPos&#x27;});
-  // ── Step 2: สร้าง/เพิ่ม column ที่ขาดทุก Sheet ──
+  // ── Step 2: Insert Sessions ในตำแหน่งที่ถูกต้องใน Trades (หลัง Confirm) ──
+  var trSh=ss.getSheetByName(SHEET.TRADES);
+  if(trSh) _insertHeaderAt(trSh,&#x27;Sessions&#x27;,&#x27;Confirm&#x27;);
+  // ── Step 3: สร้าง/เพิ่ม column ที่ขาดทุก Sheet ──
   _sheet(SHEET.TRADES,HDR.TRADES);
   _sheet(SHEET.DATA_TRADES,HDR.DATA_TRADES);
   _sheet(SHEET.SESSIONS,HDR.SESSIONS);
@@ -2392,9 +2413,8 @@ function setupSheets(){
   _sheet(SHEET.DELETED_PORTS,HDR.DELETED_PORTS);
   var def=ss.getSheetByName(&#x27;Sheet1&#x27;);
   if(def&amp;&amp;ss.getSheets().length&gt;1) ss.deleteSheet(def);
-  // แสดง alert เฉพาะเมื่อรันจาก Apps Script UI (ไม่ใช่จาก API call)
   try{
-    SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.2 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ Migration: Duration → TimeInPos + เพิ่ม SetupDuration อัตโนมัติ&#x27;);
+    SpreadsheetApp.getUi().alert(&#x27;✅ TradeLog Pro+ v5.3 พร้อม!\n\nSheets: Trades | DataTrades | Sessions | Summary | Assets | Journal | Log | DeletedPorts\nรองรับ: Multi-Portfolio + Data Mode + Custom Assets + Fees + Commission\nLog: ครบทุก action + Source (port/data/system) + 2000 rows\nDeletedPorts: tombstone ถาวร ป้องกันพอร์ตเด้งกลับ\n\n⚡ Migration: Duration→TimeInPos | Sessions inserted after Confirm | SetupDuration added&#x27;);
   }catch(e){ /* เรียกผ่าน API — ไม่มี UI ไม่ต้อง alert */ }
 }
 function onOpen(){
